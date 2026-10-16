@@ -1,0 +1,71 @@
+{
+  "$schema": "https://opencode.ai/schema.json",
+  
+  "models": {
+    "muse-main": {
+      "provider": "opencode-go",
+      "model": "muse-spark-1.3-contributor",
+      "effort": "xhigh",
+      "temperature": 0.7,
+      "max_tokens": 16384,
+      "role": "primary",
+      "description": "主力執行模型：負責 99% 的代碼生成、修改、測試與文檔"
+    },
+    "gemini-super": {
+      "provider": "opencode-go",
+      "model": "gemini-4-argon-contributor",
+      "effort": "high",
+      "temperature": 0.3,
+      "max_tokens": 8192,
+      "role": "supervisor",
+      "description": "高級顧問模型：負責架構規劃、複雜除錯與代碼審查"
+    }
+  },
+
+  "agent": {
+    "main_model": "muse-main",
+    "supervisor_model": "gemini-super",
+    "auto_escalate": true,
+    "escalate_keywords": [
+      "@gemini", 
+      "規劃", "架構", "審查", "review", "audit",
+      "為什麼", "怎麼設計", "設計模式",
+      "error log", "崩潰", "資安", "威脅",
+      "重構計畫", "任務拆解", "邊界條件"
+    ]
+  },
+
+  "routing": {
+    "default": "muse-main",
+    "rules": [
+      {
+        "match": { "keywords": ["規劃", "架構", "審查", "review", "為什麼", "設計", "error", "崩潰", "資安", "重構"] },
+        "target": "gemini-super"
+      }
+    ]
+  },
+
+  "context": {
+    "auto_scan": true,
+    "scan_depth": 3,
+    "include_patterns": [
+      "src/**", "lib/**", "app/**", "tests/**",
+      "*.py", "*.ts", "*.js", "*.json", "*.md", "*.yaml"
+    ],
+    "exclude_patterns": [
+      "node_modules/**", ".git/**", "dist/**", "build/**", 
+      "__pycache__/**", "venv/**", ".next/**"
+    ]
+  },
+
+  "budget": {
+    "gemini-super": {
+      "daily_token_limit": 100000,
+      "warn_at": 80000,
+      "notify_on_limit": true
+    },
+    "muse-main": {
+      "daily_token_limit": 2000000
+    }
+  }
+}
