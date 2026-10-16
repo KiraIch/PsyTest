@@ -110,7 +110,7 @@ def test_full_session() -> None:
 
 
 def test_output_format(tmp_path: Path) -> None:
-    """輸出 JSONL 往返驗證。"""
+    """輸出 JSONL 往返驗證（首行 meta，其後每輪一行）。"""
     import json
 
     from src.pipeline.output_formatter import OutputFormatter
@@ -119,6 +119,7 @@ def test_output_format(tmp_path: Path) -> None:
     session = {
         "session_id": "abc123",
         "persona": "mdd_severe",
+        "summary": {"total_turns": 1},
         "turns": [
             {
                 "session_id": "abc123",
@@ -131,5 +132,9 @@ def test_output_format(tmp_path: Path) -> None:
     assert path.exists()
     with open(path, "r", encoding="utf-8") as fh:
         lines = [line for line in fh if line.strip()]
-    assert len(lines) == 1
-    assert json.loads(lines[0])["session_id"] == "abc123"
+    assert len(lines) == 2
+    meta = json.loads(lines[0])
+    turn = json.loads(lines[1])
+    assert meta["record"] == "meta" and meta["session_id"] == "abc123"
+    assert meta["turn_count"] == 1
+    assert turn["record"] == "turn" and turn["turn_id"] == 1

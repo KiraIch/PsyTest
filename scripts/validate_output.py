@@ -25,30 +25,39 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _check_session(path: Path, check_embeddings: bool) -> list[str]:
-    """驗證單一會談檔，回傳錯誤清單。"""
+    """驗證單一會談檔，回傳錯誤清單（支援新舊兩種格式）。"""
     errors: list[str] = []
     try:
         with open(path, "r", encoding="utf-8") as fh:
             lines = [line for line in fh if line.strip()]
     except OSError as exc:
         return [f"{path.name}：讀取失敗：{exc}"]
-    if len(lines) != 1:
-        errors.append(f"{path.name}：應為單行 JSONL，實際 {len(lines)} 行")
-        return errors
+    if not lines:
+        return [f"{path.name}：檔案為空"]
     try:
-        session = json.loads(lines[0])
+        records = [json.loads(line) for line in lines]
     except ValueError as exc:
         return [f"{path.name}：JSON 解析失敗：{exc}"]
-    for key in ("session_id", "turns", "summary"):
-        if key not in session:
-            errors.append(f"{path.name}：缺少 {key}")
-    turns = session.get("turns", [])
+    if len(records) == 1 and "turns" in records[0]:
+        meta, turns = records[0], records[0].get("turns", [])
+    else:
+        meta = next((r for r in records if r.get("record") == "meta"), None)
+        turns = [r for r in records if r.get("record") == "turn"]
+        if meta is None:
+            errors.append(f"{path.name}：缺少 meta 行")
+            return errors
+    for key in ("session_id", "summary"):
+        if key not in meta:
+            errors.append(f"{path.name}：meta 缺少 {key}")
     if not isinstance(turns, list) or not turns:
         errors.append(f"{path.name}：turns 非法或為空")
         return errors
+    session_id = meta.get("session_id")
     for turn in turns:
         if "error" in turn:
             continue
+        if turn.get("session_id") != session_id:
+            errors.append(f"{path.name}：輪次 session_id 與 meta 不一致")
         for key in ("session_id", "turn_id", "timestamp", "counselor", "client"):
             if key not in turn:
                 errors.append(f"{path.name} 第 {turn.get('turn_id')} 輪：缺少 {key}")

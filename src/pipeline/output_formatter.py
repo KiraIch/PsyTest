@@ -83,20 +83,24 @@ class OutputFormatter:
         except OSError as exc:
             raise OSError(f"無法建立輸出目錄：{self.output_dir}：{exc}") from exc
 
-    def _encode_session(self, session: Dict[str, Any]) -> Dict[str, Any]:
-        """量化會談中的嵌入向量，回傳可 JSON 序列化字典。"""
+    def _encode_turn(self, turn: Dict[str, Any]) -> Dict[str, Any]:
+        """量化單輪中的嵌入向量，回傳可 JSON 序列化字典。"""
         import copy
 
-        encoded = copy.deepcopy(session)
-        for turn in encoded.get("turns", []):
-            vectors = turn.get("embedding_vectors", {})
-            for key, value in vectors.items():
-                if isinstance(value, list) and value:
-                    vectors[key] = quantize_embedding(value, self.embedding_format)
+        encoded = copy.deepcopy(turn)
+        for key, value in encoded.get("embedding_vectors", {}).items():
+            if isinstance(value, list) and value:
+                encoded["embedding_vectors"][key] = quantize_embedding(
+                    value, self.embedding_format
+                )
+        encoded["record"] = "turn"
         return encoded
 
     def write_session(self, session: Dict[str, Any]) -> Path:
-        """寫入單場會談（單行 JSON）。
+        """寫入單場會談（JSONL：首行為 meta，其後每輪一行）。
+
+        逐輪分行存放，可串流讀取、逐行檢查，不再是單一巨行。
+        歷史單行格式仍可由驗證與報告腳本讀取（向下相容）。
 
         Args:
             session: 會談字典（須含 session_id 與 turns）。
@@ -113,15 +117,21 @@ class OutputFormatter:
         session_id = session.get("session_id")
         if not session_id:
             raise ValueError("session 缺少 session_id")
-        if "turns" not in session or not isinstance(session["turns"], list):
+        turns = session.get("turns")
+        if not isinstance(turns, list):
             raise ValueError("session 缺少 turns 清單")
+        meta = {key: value for key, value in session.items() if key != "turns"}
+        meta["record"] = "meta"
+        meta["turn_count"] = len(turns)
         path = self.output_dir / "sessions" / f"session_{session_id}.jsonl"
         try:
             with open(path, "w", encoding="utf-8") as fh:
-                fh.write(json.dumps(self._encode_session(session), ensure_ascii=False) + "\n")
+                fh.write(json.dumps(meta, ensure_ascii=False) + "\n")
+                for turn in turns:
+                    fh.write(json.dumps(self._encode_turn(turn), ensure_ascii=False) + "\n")
         except OSError as exc:
             raise OSError(f"會談寫入失敗：{path}：{exc}") from exc
-        logger.info(f"已寫入會談：{path}")
+        logger.info(f"已寫入會談：{path}（{len(turns)} 輪）")
         return path
 
     def write_audio(

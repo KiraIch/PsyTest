@@ -35,11 +35,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         with open(source, "r", encoding="utf-8") as fh:
-            lines = [line for line in fh if line.strip()]
-        if len(lines) != 1:
-            print(f"錯誤：會談檔應為單行 JSONL，實際 {len(lines)} 行", file=sys.stderr)
-            return 2
-        session = json.loads(lines[0])
+            records = [json.loads(line) for line in fh if line.strip()]
+        if len(records) == 1 and "turns" in records[0]:
+            session = records[0]  # 舊版單行格式
+        else:
+            meta = next((r for r in records if r.get("record") == "meta"), None)
+            if meta is None:
+                print("錯誤：找不到 meta 行", file=sys.stderr)
+                return 1
+            session = dict(meta)
+            session["turns"] = [r for r in records if r.get("record") == "turn"]
     except (OSError, ValueError) as exc:
         print(f"錯誤：讀取失敗：{exc}", file=sys.stderr)
         return 1

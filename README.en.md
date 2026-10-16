@@ -6,7 +6,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.0.0
+- Document version: v1.0.2
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -277,7 +277,7 @@ Persona configs live in `data/personas/` (YAML with diagnosis, background, defen
 
 ## 8. Output Data Format
 
-The primary format is JSONL with one session per line. Each turn contains counselor text, client text with director notes, audio features, visual features, psychological annotations, Laya decisions, and three sets of 768-dimensional embedding vectors. See spec section 4.6 and `src/pipeline/output_formatter.py` for the full field definitions.
+The primary format is JSONL: the first line holds session metadata (ID, persona, summary), and each dialogue turn occupies one subsequent line, allowing streaming reads and line-by-line inspection. Each turn contains counselor text, client text with director notes, audio features, visual features, psychological annotations, Laya decisions, and three sets of 768-dimensional embedding vectors. See spec section 4.6 and `src/pipeline/output_formatter.py` for the full field definitions.
 
 Output layout:
 
@@ -367,6 +367,8 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v0.6.0 | Completed Phase 5 (single-session generation, output formatting, batch scheduling, four CLIs) with end-to-end verification | KiraIch |
 | 2026-10-16 | v0.7.0 | Completed Phase 6 (thermal monitoring, memory management, deterministic supervision reports) | KiraIch |
 | 2026-10-16 | v1.0.0 | Completed Phase 7: official laya package for decisions, ST fallback path for embeddings, finalized docs; entering maintenance | KiraIch |
+| 2026-10-16 | v1.0.1 | Fixed pyttsx3 driver-reuse empty audio; added the silence guardrail | KiraIch |
+| 2026-10-16 | v1.0.2 | JSONL restructured to a meta line plus one line per turn; hardened the decision-latency test | KiraIch |
 
 ---
 
