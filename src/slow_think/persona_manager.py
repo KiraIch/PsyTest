@@ -43,6 +43,18 @@ SAFETY_STATEMENT = (
     "你可以表達痛苦和絕望，但不需要提供或描述具體的自傷方法步驟。"
 )
 
+# 對話風格（源自 PATIENT-Ψ 六風格，用於個案多樣性與難度分級）。
+VALID_STYLES = ("plain", "upset", "verbose", "reserved", "tangent", "pleasing")
+
+STYLE_GUIDANCE = {
+    "plain": "直接坦率，有問必答。",
+    "upset": "帶有怒氣或抗拒，對諮商師的建議抱持懷疑，不輕易信任。",
+    "verbose": "話多詳盡，容易長篇大論，諮商師難以主導對話。",
+    "reserved": "簡短含糊，迴避私密話題，需要多加引導才開口。",
+    "tangent": "容易離題，講到一半轉去無關軼事，需要被帶回主題。",
+    "pleasing": "過度迎合，淡化症狀，急於獲得認可，輕易附和諮商師。",
+}
+
 # 診斷關鍵字到提示模板的對應（檔名不含副檔名）。
 _DIAGNOSIS_TEMPLATE: List[tuple[tuple[str, ...], str]] = [
     (("MDD", "296", "憂鬱", "depress"), "persona_mdd"),
@@ -78,6 +90,13 @@ class Persona:
     triggers: List[str] = field(default_factory=list)
     crisis_indicators: List[str] = field(default_factory=list)
     therapeutic_goals: List[str] = field(default_factory=list)
+    # 共病與多樣性擴充（v1.1.0）：
+    secondary_diagnosis: str = ""  # 共病診斷，無則空
+    comorbidity_notes: str = ""  # 共病互動說明
+    conversational_style: str = "plain"  # PATIENT-Ψ 六風格之一
+    resistance_level: float = 0.0  # 0-1，對諮商介入的抗拒程度
+    resistance_behaviors: List[str] = field(default_factory=list)
+    memory_anchors: List[str] = field(default_factory=list)  # 必須前後一致的關鍵事實
 
 
 class PersonaManager:
@@ -120,7 +139,16 @@ class PersonaManager:
             triggers=list(data.get("triggers", []) or []),
             crisis_indicators=list(data.get("crisis_indicators", []) or []),
             therapeutic_goals=list(data.get("therapeutic_goals", []) or []),
+            secondary_diagnosis=str(data.get("secondary_diagnosis", "") or ""),
+            comorbidity_notes=str(data.get("comorbidity_notes", "") or ""),
+            conversational_style=str(data.get("conversational_style", "plain") or "plain"),
+            resistance_behaviors=list(data.get("resistance_behaviors", []) or []),
+            memory_anchors=list(data.get("memory_anchors", []) or []),
         )
+        try:
+            persona.resistance_level = max(0.0, min(1.0, float(data.get("resistance_level", 0.0))))
+        except (TypeError, ValueError):
+            persona.resistance_level = 0.0
         if not self.validate_persona(persona):
             raise ValueError(f"個案驗證未通過：{path}（必填欄位缺漏或數值非法）")
         logger.info(f"已載入個案：{persona.name}（{persona.diagnosis}）")
@@ -150,9 +178,19 @@ class PersonaManager:
                 "triggers",
                 "crisis_indicators",
                 "therapeutic_goals",
+                "resistance_behaviors",
+                "memory_anchors",
             ):
                 if not isinstance(getattr(persona, list_field, None), list):
                     return False
+            if persona.conversational_style not in VALID_STYLES:
+                return False
+            try:
+                level = float(persona.resistance_level)
+            except (TypeError, ValueError):
+                return False
+            if not 0.0 <= level <= 1.0:
+                return False
             return True
         except Exception:  # noqa: BLE001
             return False
@@ -214,6 +252,32 @@ class PersonaManager:
             f"危機指標：{'、'.join(persona.crisis_indicators) or '未指定'}\n"
             f"治療目標：{'、'.join(persona.therapeutic_goals) or '未指定'}"
         )
+        if persona.secondary_diagnosis.strip():
+            sections.append(
+                "【共病說明】\n"
+                f"次要診斷：{persona.secondary_diagnosis}\n"
+                f"共病互動：{persona.comorbidity_notes or '兩者症狀互相影響，請一併呈現'}"
+            )
+        style_guide = STYLE_GUIDANCE.get(persona.conversational_style, "")
+        if style_guide:
+            sections.append(
+                "【對話風格】\n"
+                f"本場採用 {persona.conversational_style} 風格：{style_guide}"
+            )
+        if persona.resistance_level >= 0.3:
+            sections.append(
+                "【抗拒傾向】\n"
+                f"抗拒程度 {persona.resistance_level:.1f}：不要一味順從諮商師，"
+                f"可拒絕建議、質疑介入，行為如："
+                f"{'、'.join(persona.resistance_behaviors) or '保留、轉移話題'}"
+            )
+        if persona.memory_anchors:
+            anchors = "\n".join(f"- {anchor}" for anchor in persona.memory_anchors)
+            sections.append(
+                "【一致性錨點】\n"
+                "以下事實在全場必須前後一致，不得遺忘或張冠李戴：\n"
+                f"{anchors}"
+            )
         template = self._read_template(self._select_template(persona))
         if template:
             sections.append(template)
@@ -262,5 +326,7 @@ class PersonaManager:
             "sentence_length": persona.speech_patterns.get("sentence_length", "中等"),
             "filler_words": list(persona.speech_patterns.get("filler_words", []) or []),
             "cultural_context": persona.speech_patterns.get("cultural_context", ""),
+            "conversational_style": persona.conversational_style,
+            "resistance_level": persona.resistance_level,
         }
         return style

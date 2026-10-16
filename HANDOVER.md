@@ -2,7 +2,7 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v1.0.3
+- 文件版本：v1.1.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
@@ -121,6 +121,7 @@
 - [x] Phase 7：嵌入加入 sentence-transformers 替代路徑與 GGUF 架構預檢。
 - [x] Phase 7：llama-cpp Metal 安裝，GGUF 雙檔實測定位不相容根因。
 - [x] Phase 7：README 與 Makefile 定稿，版本對齊 1.0.0。
+- [x] 個案擴充至 9 位（含 2 共病），Persona 新增風格、抗拒、錨點欄位。
 
 ### 3.2 進行中
 
@@ -185,6 +186,7 @@ PsyTest/
 | 2026-10-16 | 以 Kokoro（sherpa-onnx，中英 103 音色，Apache-2.0）取代 Orpheus 雲端方案 | 實測 PyPI orpheus-tts 為雲端 WebSocket 客戶端，與本地端原則衝突；Kokoro 經調研與實測皆符合需求 | Orpheus 欄位保留為 guarded，選擇順序改為 kokoro→chattts→pyttsx3 |
 | 2026-10-16 | 慢想層鎖定 e4b 變體並明確寫入四份設定 | 本機已有 6.3GB 的 `:latest`（即 e4b 內容），明確指定可保證跨機器一致，`auto` 模式亦優先 e4b | 更換變體須同步修改設定、`PINNED_MODEL` 與文件 |
 | 2026-10-16 | 決策改用官方 laya 套件（multilingual）為首選後端 | 本機 Laya-BF16.gguf 為非官方轉檔，張量形狀不符；官方套件 Apache-2.0、中文驗證 0.94 置信、穩態 15ms | GGUF 路徑保留為備援，僅支援官方 ggml-org 轉檔 |
+| 2026-10-16 | 個案設計對標三篇論文缺點 | Client101 過度順從→抗拒度欄位；Finch 遺忘→記憶錨點；PATIENT-Ψ 風格→六風格欄位；共病與人口多樣性直接補齊 | 新增 6 個案（2 共病），舊 3 份同步補欄位 |
 | 2026-10-16 | 嵌入加入 ST 替代路徑，GGUF 架構預檢 | llama.cpp 尚不支援 gemma-embedding2；ST 對應同源 768 維模型 | ST 模型待授權接受後實測，在此之前相關測試明確跳過 |
 | 2026-10-16 | 督導採確定性規則而非 LLM | 督導結論須可重現、可稽核，避免以黑箱評價黑箱 | LLM 輔助解讀列為未來工作 |
 | 2026-10-16 | Phase 5 回填音訊與視覺分析器（先前階段遺漏） | 管線標註依賴兩者，無實作則數據缺聲學與視覺欄位 | 音訊採純 numpy 實作，視覺採無頭參數映射 |
@@ -391,6 +393,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | 2026-10-16 | v1.0.1 | 修復 pyttsx3 驅動重用空音訊、加入沉默守衛規則（僅解離或情感平板達 0.6 允許沉默） | KiraIch |
 | 2026-10-16 | v1.0.2 | JSONL 改為首行 meta 加逐輪分行（向下相容舊檔），決策延遲測試改暖機加三次取最小 | KiraIch |
 | 2026-10-16 | v1.0.3 | 修復裸 pytest 缺路徑（補 pythonpath）、同步 pyproject 依賴、Makefile 支援指定個案 | KiraIch |
+| 2026-10-16 | v1.1.0 | 個案擴充至 9 位（含 2 共病），Persona 新增風格、抗拒、錨點欄位 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---

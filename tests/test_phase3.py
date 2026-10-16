@@ -123,13 +123,13 @@ def test_rhythm_plan_clamps() -> None:
 
 
 def test_load_all_personas() -> None:
-    """三份個案 YAML 皆應載入並通過驗證。"""
+    """data/personas 下所有個案皆應載入並通過驗證。"""
+    import glob
+
     manager = PersonaManager()
-    for path in (
-        "data/personas/mdd_severe.yaml",
-        "data/personas/bpd_crisis.yaml",
-        "data/personas/ptsd_combat.yaml",
-    ):
+    paths = sorted(glob.glob("data/personas/*.yaml"))
+    assert len(paths) >= 9, f"個案數量不足：{len(paths)}"
+    for path in paths:
         persona = manager.load_persona(path)
         assert manager.validate_persona(persona) is True
         assert persona.triggers
@@ -164,6 +164,30 @@ def test_response_style_ranges() -> None:
     style = manager.get_response_style(persona, "anger")
     assert 0.5 <= float(style["speech_speed"]) <= 2.0
     assert style["filler_words"]
+    assert style["conversational_style"] == "upset"
+
+
+def test_comorbid_persona_prompt() -> None:
+    """共病個案提示應含共病、風格、抗拒與錨點段落。"""
+    manager = PersonaManager()
+    persona = manager.load_persona("data/personas/mdd_gad_comorbid.yaml")
+    assert persona.secondary_diagnosis
+    assert persona.resistance_level >= 0.5
+    prompt = manager.build_system_prompt(persona)
+    for marker in ("【共病說明】", "【對話風格】", "【抗拒傾向】", "【一致性錨點】"):
+        assert marker in prompt
+    assert FRAMEWORK_STATEMENT in prompt
+    assert SAFETY_STATEMENT in prompt
+
+
+def test_invalid_style_rejected() -> None:
+    """非法對話風格應驗證失敗。"""
+    from src.slow_think.persona_manager import Persona
+
+    manager = PersonaManager()
+    bad = Persona(name="測試", age=30, gender="男", diagnosis="測試", background="測試")
+    bad.conversational_style = "不存在的風格"
+    assert manager.validate_persona(bad) is False
 
 
 # ---------------------------------------------------------------------------

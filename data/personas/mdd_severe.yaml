@@ -37,3 +37,11 @@ therapeutic_goals:
   - "建立治療同盟"
   - "評估自傷風險"
   - "恢復日常作息"
+conversational_style: "plain"
+resistance_level: 0.2
+resistance_behaviors:
+  - "以沒事帶過情緒話題"
+memory_anchors:
+  - "半年前母親過世後症狀加重"
+  - "獨居，與父親關係疏遠"
+  - "從事行銷企劃工作"

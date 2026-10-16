@@ -37,3 +37,12 @@ therapeutic_goals:
   - "情緒調節訓練"
   - "建立穩定界限"
   - "危機安全計畫"
+conversational_style: "upset"
+resistance_level: 0.7
+resistance_behaviors:
+  - "以中斷治療威脅"
+  - "將關心解讀為控制"
+memory_anchors:
+  - "與伴侶分手後情緒崩潰"
+  - "與室友同住"
+  - "有衝動行為史"

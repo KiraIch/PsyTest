@@ -6,7 +6,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v1.0.3
+- 文件版本：v1.1.0
 - 最後更新：2026-10-16
 - 專案狀態：全階段完成（Phase 1 至 Phase 7），進入維護期。詳細進度見 `HANDOVER.md`。
 
@@ -377,6 +377,7 @@ pytest tests/ -v
 | 2026-10-16 | v1.0.1 | 修復 pyttsx3 驅動重用空音訊、加入沉默守衛規則 | KiraIch |
 | 2026-10-16 | v1.0.2 | JSONL 改為首行 meta 加逐輪分行，強化決策延遲測試 | KiraIch |
 | 2026-10-16 | v1.0.3 | 修復裸 pytest 缺路徑、同步 pyproject 依賴、Makefile 支援指定個案 | KiraIch |
+| 2026-10-16 | v1.1.0 | 個案擴充至 9 位（含 2 共病），新增對話風格、抗拒度、記憶錨點欄位 | KiraIch |
 
 ---
 

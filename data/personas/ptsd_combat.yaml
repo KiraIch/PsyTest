@@ -37,3 +37,11 @@ therapeutic_goals:
   - "建立安全感"
   - "漸進式暴露"
   - "睡眠品質改善"
+conversational_style: "reserved"
+resistance_level: 0.5
+resistance_behaviors:
+  - "拒談創傷細節"
+  - "以沒事結尾敏感話題"
+memory_anchors:
+  - "退役軍人，現從事保全工作"
+  - "夜間多夢，白天警覺過度"

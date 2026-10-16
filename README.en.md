@@ -6,7 +6,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.0.3
+- Document version: v1.1.0
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -377,6 +377,7 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v1.0.1 | Fixed pyttsx3 driver-reuse empty audio; added the silence guardrail | KiraIch |
 | 2026-10-16 | v1.0.2 | JSONL restructured to a meta line plus one line per turn; hardened the decision-latency test | KiraIch |
 | 2026-10-16 | v1.0.3 | Fixed bare-pytest path issue, synced pyproject dependencies, Makefile persona override | KiraIch |
+| 2026-10-16 | v1.1.0 | Expanded to 9 personas (2 comorbid); added conversational style, resistance, and memory anchor fields | KiraIch |
 
 ---
 
