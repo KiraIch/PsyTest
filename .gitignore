@@ -190,8 +190,9 @@ site/
 .mkdocs_cache/
 
 # ---------------------------------------------------------------------------
-# 11. OpenCode / AI 工具本機狀態（保留 opencode.json，忽略執行期產出）
+# 11. OpenCode / AI 工具本機狀態（opencode.json 僅供本機使用，不公開）
 # ---------------------------------------------------------------------------
+opencode.json
 .opencode/
 .opencode-cache/
 *.opencode.log
