@@ -1,0 +1,16 @@
+# 諮商場景：危機介入
+# 目標：評估自傷風險、制定安全計畫、轉介資源。
+# 注意：本場景為教學模擬，不得產出具體自傷方法內容。
+
+name: "crisis_intervention"
+description: "個案表達強烈絕望與自傷意念，諮商師進行結構化危機評估。"
+max_turns: 30
+counselor_opening: "聽到您這麼說，我很擔心您。為了確保您的安全，我想跟您一起仔細談談最近的狀況，可以嗎？"
+techniques:
+  - "risk_assessment"
+  - "safety_planning"
+  - "resource_linkage"
+end_conditions:
+  - "完成風險評估"
+  - "建立安全計畫"
+  - "達到 30 輪"

@@ -2,7 +2,7 @@
 # PsyTest — .gitignore
 # 用途：集中管理 Git 版本控制排除規則
 # 維護方式：定期更新（建議每次新增依賴、工具、產出物時同步檢視）
-# 最後更新：2026-10-16
+# 最後更新：2026-10-16（v0.2.0：新增數據輸出與檢查點規則）
 # 維護者：KiraIch
 #
 # 更新指引：
@@ -157,7 +157,9 @@ config/secrets*.yaml
 # ---------------------------------------------------------------------------
 # 8. 日誌、暫存檔與本機資料庫
 # ---------------------------------------------------------------------------
-logs/
+# 注意：使用 logs/* 而非 logs/，以允許下方 .gitkeep 例外生效。
+logs/*
+!logs/.gitkeep
 *.log
 *.tmp
 *.temp
@@ -198,12 +200,27 @@ site/
 # 12. 專案特定：PsyTest 執行期產出（依實作進展定期擴充）
 # ---------------------------------------------------------------------------
 # 測驗結果、使用者資料匯出（涉及隱私，禁止提交）
+# 注意：使用 /* 而非 /，以允許 .gitkeep 例外生效，維持目錄結構。
 data/raw/
 data/processed/
 data/exports/
+data/output/sessions/*
+!data/output/sessions/.gitkeep
+data/output/audio/*
+!data/output/audio/.gitkeep
+data/output/annotations/*
+!data/output/annotations/.gitkeep
+*.wav
+*.mp3
+*.flac
 results/
 outputs/
 uploads/
+
+# 批量生成檢查點與暫存
+.checkpoints/
+*.checkpoint.json
+checkpoints/
 
 # 本機實驗與草稿
 experiments/

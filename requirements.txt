@@ -1,0 +1,16 @@
+# PsyTest 依賴套件（跨平台：macOS / Linux / Windows）
+#
+# llama-cpp-python 需依平台以 CMAKE_ARGS 重新編譯以啟用對應後端，
+# 詳見 README.md 5.2 節。以下為純 Python 依賴。
+
+llama-cpp-python>=0.2.0  # GGUF 模型推理（自動偵測 CUDA/ROCm/Metal/CPU）
+numpy>=1.24.0
+scipy>=1.10.0
+librosa>=0.10.0  # 音訊分析
+soundfile>=0.12.0  # 音訊讀寫
+requests>=2.31.0  # Ollama API
+pyyaml>=6.0  # 設定檔
+rich>=13.0.0  # 終端 UI
+pydantic>=2.0  # 數據驗證
+pytest>=7.0  # 測試框架
+psutil>=5.9.0  # 溫度與資源監控 fallback

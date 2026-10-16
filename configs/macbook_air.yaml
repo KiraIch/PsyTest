@@ -1,0 +1,60 @@
+# PsyTest MacBook Air 優化設定
+# 適用：無風扇 Apple Silicon 筆電，優先控制溫度與記憶體。
+# 以 default.yaml 為基準，僅覆寫差異處（載入時請先讀 default 再合併）。
+
+project:
+  name: "PsyTest"
+  version: "0.2.0"
+  output_dir: "data/output"
+
+backend:
+  auto_detect: true
+  force: "metal"
+  gpu_layers: "auto"
+  max_memory_gb: 12
+  temperature_limit: 80
+
+models:
+  embedding:
+    path: "models/embeddinggemma2-q8.gguf"
+    context_length: 2048
+    batch_size: 8
+    gpu_layers: "auto"
+
+  laya:
+    path: "models/laya-421m-bf16.gguf"
+    context_length: 512
+    temperature: 0.0
+    gpu_layers: "auto"
+
+  llm:
+    provider: "ollama"
+    model_name: "auto"
+    host: "http://localhost:11434"
+    temperature: 0.9
+    top_p: 0.9
+    max_tokens: 256
+    repeat_penalty: 1.1
+
+  tts:
+    engine: "auto"
+    sample_rate: 24000
+    voice: "default"
+
+pipeline:
+  max_turns_per_session: 20
+  max_duration_minutes: 40
+  save_audio: true
+  save_embeddings: true
+  embedding_save_format: "float16"
+
+thermal:
+  enabled: true
+  check_interval_seconds: 15
+  throttle_threshold: 80
+  cooldown_seconds: 180
+
+logging:
+  level: "INFO"
+  file: "logs/psytest.log"
+  console: true

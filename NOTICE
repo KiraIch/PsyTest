@@ -11,9 +11,12 @@ Copyright 2026 KiraIch
 
 | 元件 | 來源 / 授權 | 用途 | 備註 |
 |---|---|---|---|
-| Laya-BF16.gguf | 來源與授權待盤點 | 主要生成模型，本機推論用 | 檔案不納入版本控制，授權確認後補充 |
-| embeddinggemma-2-Q8_0.gguf | 來源與授權待盤點 | 語意嵌入模型 | 檔案不納入版本控制，授權確認後補充 |
-| （待填） | （待填） | （待填） | 應用層相依確定後補充 |
+| Laya-BF16.gguf（別名 laya-421m-bf16.gguf） | 來源與授權待盤點 | 快思層決策模型 | 檔案不納入版本控制，授權確認後補充 |
+| embeddinggemma-2-Q8_0.gguf（別名 embeddinggemma2-q8.gguf） | 來源與授權待盤點 | 五感層嵌入模型 | 檔案不納入版本控制，授權確認後補充 |
+| fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive | Ollama 社群模型，授權待盤點 | 慢想層個案扮演 | 經 Ollama 取得，不納入版本控制 |
+| llama-cpp-python | MIT | GGUF 推理 | 見 requirements.txt |
+| librosa / soundfile | ISC / BSD | 音訊分析與讀寫 | 見 requirements.txt |
+| requests / pyyaml / rich / pydantic / psutil | Apache-2.0 / MIT / BSD | API、設定、UI、驗證、監控 | 見 requirements.txt |
 
 ## 注意事項
 

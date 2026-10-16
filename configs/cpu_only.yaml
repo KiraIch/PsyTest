@@ -1,0 +1,59 @@
+# PsyTest 純 CPU 設定
+# 適用：無 GPU 環境。功能完整，但模型推理速度較慢。
+
+project:
+  name: "PsyTest"
+  version: "0.2.0"
+  output_dir: "data/output"
+
+backend:
+  auto_detect: false
+  force: "cpu"
+  gpu_layers: "none"
+  max_memory_gb: null
+  temperature_limit: 90
+
+models:
+  embedding:
+    path: "models/embeddinggemma2-q8.gguf"
+    context_length: 2048
+    batch_size: 4
+    gpu_layers: 0
+
+  laya:
+    path: "models/laya-421m-bf16.gguf"
+    context_length: 512
+    temperature: 0.0
+    gpu_layers: 0
+
+  llm:
+    provider: "ollama"
+    model_name: "auto"
+    host: "http://localhost:11434"
+    temperature: 0.9
+    top_p: 0.9
+    max_tokens: 256
+    repeat_penalty: 1.1
+
+  tts:
+    engine: "pyttsx3"
+    sample_rate: 16000
+    voice: "default"
+
+pipeline:
+  max_turns_per_session: 10
+  max_duration_minutes: 30
+  save_audio: false
+  save_embeddings: true
+  embedding_save_format: "int8"
+
+thermal:
+  enabled: true
+  check_interval_seconds: 60
+  throttle_threshold: 90
+  cooldown_seconds: 120
+
+logging:
+  level: "INFO"
+  file: "logs/psytest.log"
+  console: true

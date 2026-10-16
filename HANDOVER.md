@@ -2,12 +2,12 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v0.1.0
+- 文件版本：v0.2.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
 - 接手人：（待填）
-- 專案狀態：初期建置階段（Initial Setup）
+- 專案狀態：Phase 1 完成，Phase 2 待啟動
 - 下次預定檢視日期：2027-01-16（原則不超過三個月）
 
 ---
@@ -35,21 +35,23 @@
 
 ### 1.1 本次交接目的
 
-- 初版建置：建立版本控制基礎、文件體系與授權架構，確保后續開發可在一致規範下進行。
+- v0.2.0：納入完整開發規格書（本地端多模態心理諮商模擬數據生成系統，快思慢想架構），完成 Phase 1 基礎設施與全模組骨架，確立後續六個階段的實作基線。
 - 適用情境：新成員加入、維護責任轉移、長期暫停後重啟。
 
 ### 1.2 關鍵結論
 
-1. 儲存庫已初始化，基礎文件（`README.md`、`HANDOVER.md`、`LICENSE`、`NOTICE`、`.gitignore`）已建立。
-2. 模型權重檔（約 1.1 GB）不納入版本控制，須另行交接。
-3. 應用層程式碼尚未開始實作，接手人首要任務為確認需求範圍與技術選型（見第 10 章）。
+1. 規格書已定稿並記憶：五感層、快思層、慢想層、聲音層、數據管線，支援 Metal、CUDA、ROCm、CPU 四種後端，實作順序為 Phase 1 至 Phase 7。
+2. Phase 1 已完成：`src/config.py`、`src/backend/detector.py`、`src/utils/logger.py`、`configs/` 四份設定、`requirements.txt`、`pyproject.toml`、`Makefile`、`.env.example` 均已實作並通過驗證。
+3. Phase 2 至 Phase 7 為骨架狀態（介面與 docstring 完整，方法體拋出 `NotImplementedError`），接手人首要任務為 Phase 2 核心引擎（見第 10 章）。
+4. 模型權重檔（約 1.1 GB）與 Ollama 模型不納入版本控制，須另行交接。規格檔名與本機實際檔名存在別名對應，已由 `src/config.py` 自動處理。
 
 ### 1.3 需接手人優先閱讀的檔案
 
-1. `README.md` — 專案說明與使用規範。
-2. `opencode.json` — 開發工具模型路由設定。
-3. `models/README.md` — 模型檔案取得與驗證說明。
-4. 本文件第 5、7、9、10 章。
+1. `README.md` v0.2.0 — 專案說明、安裝、Ollama 設定、倫理聲明。
+2. `src/config.py` — 設定管理與模型別名邏輯。
+3. `src/backend/detector.py` — 後端偵測邏輯。
+4. `models/README.md` — 模型檔名對照與驗證。
+5. 本文件第 3、9、10 章。
 
 ---
 
@@ -58,42 +60,48 @@
 | 項目 | 內容 |
 |---|---|
 | 專案名稱 | PsyTest |
+| 專案定位 | 本地端多模態心理諮商模擬數據生成系統（快思慢想架構） |
 | 儲存庫位址 | https://github.com/KiraIch/PsyTest.git |
 | 授權 | Apache License 2.0 |
-| 主要語言 | 待定（目前僅含設定與文件，應用層未選型） |
+| 主要語言 | Python 3.10 以上（已驗證 3.13） |
 | 預設分支 | `main` |
 | 整合分支 | `develop`（待建立） |
 | 議題管理 | GitHub Issues（待啟用標籤規範） |
 | 文件語言 | 繁體中文為主，程式碼註解與提交訊息中英並行 |
 | 文件規範 | 不使用表情符號、顏文字、繪文字，保持正式書面語 |
+| Subagent 規範 | 一律使用 Muse Spark 1.3 Contributor，高或極高 effort（見 `opencode.json` 的 `subagents` 區段） |
 
 ---
 
 ## 3. 目前進度
 
-### 3.1 已完成
+### 3.1 已完成（v0.2.0）
 
-- [x] 建立 `.gitignore`（v0.1.0，含 OS、IDE、Python、Node、模型權重、機敏資訊、執行期產出等 13 類規則）
-- [x] 建立 `README.md`（v0.1.0，16 章節，確立定期更新機制）
-- [x] 建立 `HANDOVER.md`（本文件，v0.1.0）
-- [x] 加入 `LICENSE`（Apache 2.0）與 `NOTICE`
-- [x] 建立 `models/.gitkeep` 與 `models/README.md` 佔位與說明
-- [x] 確認 `opencode.json` 沿用現有設定，未修改其模型路由邏輯
-- [x] 初始化 Git 並推送至遠端 `main` 分支
+- [x] Phase 1：專案結構建立（`src/`、`data/`、`tests/`、`configs/`、`scripts/`、`logs/`）。
+- [x] Phase 1：`src/config.py`（YAML 載入、環境變數覆寫、模型別名、驗證）。
+- [x] Phase 1：`src/backend/detector.py`（Metal→CUDA→ROCm→CPU 偵測、`--force-backend`、CLI）。
+- [x] Phase 1：`src/utils/logger.py`（終端加輪替檔案日誌）。
+- [x] Phase 1：`configs/` 四份設定（default、macbook_air、cuda_workstation、cpu_only）。
+- [x] 全模組骨架：backend（base 加四後端）、perception、fast_think、slow_think（含 6 份提示模板）、voice、pipeline、report、utils（thermal、memory）。
+- [x] 資料範例：3 份個案 YAML、2 份場景 YAML。
+- [x] 測試 6 份：backend 全量可過，其餘缺權重或服務時自動跳過。
+- [x] 根目錄配套：`requirements.txt`、`pyproject.toml`、`Makefile`、`.env.example`、`scripts/` 7 支（含 `validate_setup.py`）。
+- [x] 文件更新：`README.md` v0.2.0（架構圖、跨平台安裝、Ollama、倫理聲明）、`models/README.md`（檔名對照）、`NOTICE`（第三方表）、`.gitignore` v0.2.0（輸出與檢查點規則）。
 
 ### 3.2 進行中
 
-- [ ] 需求範圍確認：題庫格式、施測流程、計分規則、報告格式尚未定稿。
-- [ ] 技術選型：應用層語言與框架（Python / TypeScript）尚未決定。
-- [ ] 目錄建置：`src/`、`tests/`、`docs/`、`scripts/`、`data/` 結構尚未建立。
+- [ ] Phase 2：`perception/embedding_engine.py`（載入 GGUF）。
+- [ ] Phase 2：`fast_think/laya_engine.py`（載入 GGUF）。
+- [ ] Phase 2：`slow_think/ollama_client.py`（連接 Ollama）。
 
 ### 3.3 尚未開始
 
-- [ ] 題庫管理功能實作。
-- [ ] 計分引擎實作與單元測試。
-- [ ] 本機模型推論串接（`Laya-BF16.gguf`、`embeddinggemma-2-Q8_0.gguf`）。
-- [ ] CI 流程建立。
-- [ ] 隱私影響評估。
+- [ ] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
+- [ ] Phase 4：tts_engine、orpheus/chattts 後端、voice_director。
+- [ ] Phase 5：session_generator、output_formatter、batch_generator。
+- [ ] Phase 6：thermal_monitor、supervisor、scripts 完整實作。
+- [ ] Phase 7：全量測試、README 定稿、Makefile 定稿。
+- [ ] 隱私影響評估與模型授權盤點。
 
 ---
 
@@ -103,34 +111,49 @@
 
 ```text
 PsyTest/
-├── README.md
-├── HANDOVER.md
-├── LICENSE
-├── NOTICE
-├── .gitignore
-├── opencode.json
-└── models/              # 權重檔存放處（不提交，見 models/README.md）
+├── README.md / HANDOVER.md / LICENSE / NOTICE / .env.example
+├── .gitignore / opencode.json / requirements.txt / pyproject.toml / Makefile
+├── models/                    ← 權重檔（不提交，見 models/README.md）
+├── src/
+│   ├── config.py              ← Phase 1 完成
+│   ├── backend/               ← detector 完成，base 加四後端為骨架
+│   ├── perception/            ← 骨架（embedding 計算相似度已實作）
+│   ├── fast_think/            ← 骨架（含決策資料結構）
+│   ├── slow_think/            ← 骨架（含 prompts 六份模板）
+│   ├── voice/                 ← 骨架（含情緒映射表）
+│   ├── pipeline/              ← 骨架
+│   ├── report/                ← 骨架
+│   └── utils/                 ← logger 完成，thermal/memory 為骨架
+├── data/personas/ scenarios/  ← 範例 5 份
+├── data/output/               ← 僅結構，不提交內容
+├── tests/                     ← 6 份
+├── configs/                   ← 4 份
+└── scripts/                   ← 7 支
 ```
 
 ### 4.2 關鍵檔案說明
 
 | 檔案 | 用途 | 修改注意事項 |
 |---|---|---|
-| `opencode.json` | OpenCode 模型路由與預算設定 | 修改前須理解 `muse-main` 與 `gemini-super` 分工；變更須記錄於本文件第 13 章 |
-| `.gitignore` | 排除規則 | 新增產出物類型時同步擴充；修改後以 `git check-ignore -v` 驗證 |
-| `README.md` | 對外說明文件 | 保持無表情符號之正式語體；更新時同步版本號與第 13 章 |
-| `HANDOVER.md` | 交接依據 | 每次交接或重大變更必須更新；不可刪除歷史紀錄，僅可追加 |
-| `models/README.md` | 模型交接說明 | 雜湊值與授權資訊確認後須即時補充 |
-| `LICENSE` | Apache 2.0 全文 | 原則禁止修改，僅可更新著作權年度與持有者 |
-| `NOTICE` | 第三方聲明 | 新增相依或模型時同步更新 |
+| `src/config.py` | 設定載入、環境覆寫、模型別名 | 新增設定鍵須同步更新四份 YAML 與 `.env.example` |
+| `src/backend/detector.py` | 後端偵測唯一入口 | 修改偵測順序須同步更新測試與 README |
+| `src/backend/base.py` | 後端統一介面 | 新增抽象方法須同步實作四個後端 |
+| `configs/*.yaml` | 環境設定 | 機敏值禁止寫入，改用環境變數 |
+| `opencode.json` | 模型路由與 subagent 規範 | `gemini-super` 為 medium；subagent 限定 muse-main 高或極高 effort |
+| `.gitignore` | 排除規則 | 以 `git check-ignore -v` 驗證，修改後更新本文件第 6 章 |
+| `models/README.md` | 檔名別名對照 | 新增模型時同步更新 `MODEL_ALIASES` |
+| `LICENSE` / `NOTICE` | 授權全文與第三方聲明 | LICENSE 禁止修改；NOTICE 隨相依即時更新 |
 
 ### 4.3 架構決策紀錄（ADR 摘要）
 
 | 日期 | 決策 | 原因 | 影響 |
 |---|---|---|---|
 | 2026-10-16 | 模型權重不進 Git，以 `.gitignore` 排除 | 單檔超過 GitHub 100 MB 限制，總計逾 1 GB | 須建立獨立分發管道，見第 5.3 節 |
-| 2026-10-16 | 採用 Apache 2.0 授權 | 允許商業利用與修改，具專利授權條款，利於研究合作 | 須保留 `LICENSE` 與 `NOTICE`，衍生散佈須附授權 |
+| 2026-10-16 | 採用 Apache 2.0 授權 | 允許商業利用與修改，具專利授權條款 | 須保留 `LICENSE` 與 `NOTICE` |
 | 2026-10-16 | 文件採定期更新制，不超過三個月檢視一次 | 避免文件與實作脫節 | 維護者須排程檢視，見第 8 章 |
+| 2026-10-16 | 規格檔名與本機檔名以別名相容 | 本機已有 `Laya-BF16.gguf`，規格書用 `laya-421m-bf16.gguf` | `MODEL_ALIASES` 統一處理，禁止散佈兩套路徑寫法 |
+| 2026-10-16 | Phase 2 至 Phase 7 先立骨架再填實作 | 保證結構一次到位，後續迭代不重排目錄 | 骨架方法一律拋出 `NotImplementedError` 並註明階段 |
+| 2026-10-16 | 測試缺權重或服務時自動跳過 | CI 與新成員本機不一定有模型 | 不可將跳過改為失敗，完整案例隨階段啟用 |
 
 後續架構決策請依此表格式追加，禁止覆寫既有紀錄。
 
@@ -140,9 +163,9 @@ PsyTest/
 
 ### 5.1 前置需求
 
-- Git 2.40 以上。
-- 可用磁碟空間 5 GB 以上。
+- Git 2.40 以上，Python 3.10 以上，可用磁碟 5 GB 以上。
 - 已取得遠端儲存庫讀取權限。
+- llama-cpp-python 須依平台以 `CMAKE_ARGS` 編譯（見 README 3.2 節）。
 
 ### 5.2 標準建置流程
 
@@ -151,61 +174,54 @@ PsyTest/
 git clone https://github.com/KiraIch/PsyTest.git
 cd PsyTest
 
-# 2. 確認分支與狀態
-git status
-git branch -a
+# 2. 安裝依賴
+pip install -r requirements.txt
 
-# 3. 確認忽略規則生效
+# 3. 偵測後端與驗證環境
+python -m src.backend.detector
+python scripts/validate_setup.py
+
+# 4. 確認忽略規則生效
 git check-ignore -v models/Laya-BF16.gguf
 git check-ignore -v models/embeddinggemma-2-Q8_0.gguf
 
-# 4. 檢查文件版本
-head -n 20 README.md
-head -n 20 HANDOVER.md
+# 5.（選用）建立 .env
+cp .env.example .env
 ```
-
-預期結果：步驟 3 應顯示對應的 `.gitignore` 規則行，步驟 4 應顯示最新版本號與日期。
 
 ### 5.3 模型檔案還原
 
-模型檔案不隨儲存庫取得，須由移交人依以下方式之一提供：
-
-1. 內部硬碟或加密隨身碟複製。
-2. 內部檔案伺服器下載連結（須具存取控制）。
-3. 其他經雙方同意之安全管道。
-
-還原後請執行：
+GGUF 權重由移交人經安全管道提供，Ollama 模型自行拉取：
 
 ```bash
-ls -lh models/
-shasum -a 256 models/Laya-BF16.gguf
-shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
+ollama pull fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive
 ```
 
-並與移交人提供的雜湊值比對。雜湊值正式版將補充於 `models/README.md`。
+還原後執行 `ls -lh models/` 與 `shasum -a 256` 比對雜湊（正式值見 `models/README.md`）。
 
 ### 5.4 驗證清單
 
 - [ ] `git status` 顯示工作區乾淨。
-- [ ] `models/` 下兩個權重檔存在且大小正確（約 805 MB、296 MB）。
-- [ ] 已閱讀 `README.md` 第 8、11 章（設定與隱私）。
-- [ ] 已確認 `opencode.json` 未被意外修改（`git diff opencode.json` 無輸出）。
+- [ ] `python -m src.backend.detector` 輸出合法後端。
+- [ ] `python scripts/validate_setup.py` 回傳 0。
+- [ ] `pytest tests/ -v` 通過或僅有預期跳過。
+- [ ] `models/` 下兩個權重檔存在（約 805 MB、296 MB）。
 
 ---
 
 ## 6. 環境與忽略規則
 
-- 正式規則以 `.gitignore` 為準，本章僅摘要說明交接相關重點。
-- `.gitignore` 版本：v0.1.0，最後更新 2026-10-16。
+- 正式規則以 `.gitignore` 為準，本章僅摘要交接重點。
+- `.gitignore` 版本：v0.2.0，最後更新 2026-10-16。
 
 | 類別 | 代表規則 | 交接注意 |
 |---|---|---|
-| 模型權重 | `*.gguf`、`models/` | 禁止強制加入（`git add -f`）；遺失時依 5.3 節還原 |
-| 機敏資訊 | `.env`、`*.pem`、`*.key` | 交接時須當面或以安全管道移交，不得經由 Git 或明文通訊軟體傳遞 |
-| 資料產出 | `data/`、`results/`、`uploads/` | 含個資者禁止複製至個人裝置；測試僅用合成資料 |
-| 工具暫存 | `.venv/`、`node_modules/`、`dist/` | 接手人本機重建即可，不需移交 |
+| 模型權重 | `*.gguf`、`models/*`（保留 `.gitkeep`、`README.md`） | 禁止強制加入；遺失時依 5.3 節還原 |
+| 資料輸出 | `data/output/*` 內容、`*.wav`、`*.checkpoint.json` | 含個資者禁止複製至個人裝置 |
+| 機敏資訊 | `.env`、`*.pem`、`*.key` | 當面或以密碼管理器移交，不得經 Git 或明文傳遞 |
+| 日誌暫存 | `logs/*`（保留 `.gitkeep`）、`__pycache__/`、`.pytest_cache/` | 接手人本機重建即可 |
 
-修改 `.gitignore` 後，請同步更新本章表格與 `README.md` 第 5 章，並於第 13 章記錄。
+修改 `.gitignore` 後，請以 `git check-ignore -v` 驗證並同步更新 `README.md` 常見問題章節。
 
 ---
 
@@ -216,9 +232,9 @@ shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
 | 項目 | 說明 | 持有人 | 移交方式 | 狀態 |
 |---|---|---|---|---|
 | GitHub 儲存庫管理權 | `KiraIch/PsyTest` 的 Admin 權限 | KiraIch | 由持有人於 GitHub Settings 直接授權 | 待確認接手人帳號 |
-| 模型檔案存取權 | 內部下載連結或實體媒體 | KiraIch | 依 5.3 節辦理 | 待移交 |
+| 模型檔案存取權 | GGUF 內部下載連結或實體媒體 | KiraIch | 依 5.3 節辦理 | 待移交 |
+| Ollama 模型 | 公開拉取，無需帳號 | 無 | 接手人自行 `ollama pull` | 無需移交 |
 | （範例）部署主機 SSH | 正式環境存取 | （待填） | 主管核准後重建金鑰，不沿用舊金鑰 | 未啟用 |
-| （範例）第三方 API 金鑰 | 推論或分析服務 | （待填） | 以密碼管理器移交，舊金鑰輪替作廢 | 未啟用 |
 
 交接完成後，移交人應即時撤銷不再需要的共用權限，並於第 14 章簽收時註記。
 
@@ -234,19 +250,17 @@ shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
 | `HANDOVER.md` | 進度變更、人員異動、風險新增 | 每次迭代結束；交接前必須更新 | 維護者 |
 | `.gitignore` | 新增依賴、工具、產出物類型 | 每次新增技術債時檢視 | 維護者 |
 | `NOTICE` | 新增相依套件或模型 | 即時更新 | 維護者 |
+| `models/README.md` | 模型增刪或別名變更 | 即時更新 | 維護者 |
 
 ### 8.2 例行檢查指令
 
 ```bash
-# 工作區健康檢查
 git status --short
 git diff --check
-
-# 忽略規則驗證
+python -m src.backend.detector
+python scripts/validate_setup.py
+pytest tests/ -v
 git check-ignore -v models/Laya-BF16.gguf
-
-# 大檔案預警（提交前執行，避免誤傳）
-git status --short | awk '{print $2}' | xargs -I{} sh -c 'test -f "{}" && du -h "{}"' 2>/dev/null | sort -rh | head -n 20
 ```
 
 ### 8.3 發佈前檢查清單
@@ -263,11 +277,13 @@ git status --short | awk '{print $2}' | xargs -I{} sh -c 'test -f "{}" && du -h 
 
 | 編號 | 風險 | 影響 | 緩解措施 | 負責人 | 狀態 |
 |---|---|---|---|---|---|
-| R-01 | 模型檔案體積大，分發不易 | 新成員建置耗時；誤傳導致推送失敗 | 維持 `.gitignore` 排除；建立內部下載管道；文件明示還原步驟 | KiraIch | 持續追蹤 |
-| R-02 | 模型原始授權尚未完整盤點 | 散佈或商用可能侵權 | 盤點兩份 GGUF 來源授權；結果記入 `NOTICE`；必要時替換模型 | （待指派） | 待處理 |
-| R-03 | 應用層技術選型未定 | 文件與實作可能脫節 | 選型確定後一週內更新 `README.md` 第 3、5 章與本文件第 4 章 | （待指派） | 待處理 |
-| R-04 | 心理測驗涉及敏感個資 | 外洩將造成嚴重後果 | 禁止真實資料進 Git；開發僅用合成資料；正式上線前完成法遵審查 | （待指派） | 持續追蹤 |
-| R-05 | 測驗結果不可作為臨床診斷 | 誤用可能造成危害 | 文件與未來 UI 均須載明警語；審查報告產出文案 | （待指派） | 持續追蹤 |
+| R-01 | 模型檔案體積大，分發不易 | 新成員建置耗時；誤傳導致推送失敗 | 維持 `.gitignore` 排除；別名相容減少改名成本 | KiraIch | 持續追蹤 |
+| R-02 | 模型原始授權尚未完整盤點 | 散佈或商用可能侵權 | 盤點兩份 GGUF 與 Ollama 模型授權；結果記入 `NOTICE` | （待指派） | 待處理 |
+| R-03 | Phase 2 至 Phase 7 尚未實作 | 骨架方法呼叫時拋出例外 | CLI 與測試在缺件時降級為驗證或跳過；依第 10 章順序填補 | （待指派） | 待處理 |
+| R-04 | 心理諮商模擬涉及敏感議題 | 誤用或外流造成危害 | 禁止真實資料進 Git；危機模板設安全紅線；上線前完成法遵審查 | （待指派） | 持續追蹤 |
+| R-05 | 模擬結果不可作為臨床診斷 | 誤用可能造成危害 | 文件與未來 UI 均須載明警語；審查報告產出文案 | （待指派） | 持續追蹤 |
+| R-06 | BF16 在舊硬體或舊版 llama.cpp 可能不相容 | Laya 載入失敗 | Phase 2 實作自動轉 FP16 或提示下載 FP16 版本 | （待指派） | 待處理 |
+| R-07 | 24GB 記憶體同時跑多模型吃緊 | OOM 中斷批量生成 | 按需載入與卸載；批量預設串行；溫度與記憶體監控 | （待指派） | 待處理 |
 
 新增風險時請依序編號，禁止刪除已結案風險，結案時將狀態改為「已結案」並保留紀錄。
 
@@ -275,37 +291,37 @@ git status --short | awk '{print $2}' | xargs -I{} sh -c 'test -f "{}" && du -h 
 
 ## 10. 待辦事項
 
-### 10.1 高優先級（接手後 30 天內）
+### 10.1 高優先級（Phase 2）
 
-1. [ ] 確認需求範圍：題庫來源、題型、計分規則、報告對象。
-2. [ ] 完成技術選型：語言、框架、推論引擎（例如 llama.cpp / Ollama / 其他）。
-3. [ ] 建立 `src/`、`tests/`、`scripts/` 基本骨架與第一個可執行範例。
-4. [ ] 盤點兩份 GGUF 模型來源授權，更新 `NOTICE` 與 `models/README.md`。
+1. [ ] `perception/embedding_engine.py`：載入 GGUF，實作文字、音訊、影像嵌入與批次嵌入。
+2. [ ] `fast_think/laya_engine.py`：載入 GGUF，實作四種決策，處理 BF16 相容性。
+3. [ ] `slow_think/ollama_client.py`：連線偵測、模糊匹配、串流與重試。
+4. [ ] 盤點兩份 GGUF 與 Ollama 模型授權，更新 `NOTICE` 與 `models/README.md` 雜湊值。
 5. [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
 
-### 10.2 中優先級（接手後 90 天內）
+### 10.2 中優先級（Phase 3 至 Phase 5）
 
-1. [ ] 實作題庫解析與版本管理。
-2. [ ] 實作計分引擎與單元測試。
-3. [ ] 建立 CI（至少含格式檢查與單元測試）。
-4. [ ] 補充 `.env.example` 與設定文件。
+1. [ ] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
+2. [ ] Phase 4：tts_engine、orpheus/chattts 後端、voice_director。
+3. [ ] Phase 5：session_generator、output_formatter、batch_generator 與 CLI 完整實作。
+4. [ ] 補充 `.env.example` 實際使用案例。
 
-### 10.3 低優先級（長期）
+### 10.3 低優先級（Phase 6 至 Phase 7）
 
-1. [ ] 群體統計報表與視覺化。
-2. [ ] 權限管理與稽核日誌。
-3. [ ] 部署方案與備份策略。
+1. [ ] Phase 6：thermal_monitor、supervisor、記憶體管理。
+2. [ ] Phase 7：全量測試啟用、README 定稿、Makefile 定稿。
+3. [ ] 群體統計報表、權限管理、部署與備份策略。
 
 ---
 
 ## 11. 驗收標準
 
-本次交接（v0.1.0）之驗收條件如下，接手人確認後方得簽收：
+本次交接（v0.2.0）之驗收條件如下，接手人確認後方得簽收：
 
 1. 可依第 5 章步驟完成環境建置，驗證清單全數通過。
-2. 可說明模型檔案為何不進 Git，以及遺失時的還原管道。
-3. 可說明 `opencode.json` 中兩個模型的分工。
-4. 可說明日常三份文件的更新時機與負責人。
+2. 可說明模型檔名別名機制，以及遺失時的還原管道。
+3. 可說明四種後端的偵測順序與手動指定方式。
+4. 可說明 Phase 1 完成範圍與 Phase 2 待辦。
 5. 已取得必要的儲存庫權限與模型檔案（或已約定取得時間）。
 
 ---
@@ -325,7 +341,8 @@ git status --short | awk '{print $2}' | xargs -I{} sh -c 'test -f "{}" && du -h 
 | 日期 | 版本 | 變更摘要 | 作者 |
 |---|---|---|---|
 | 2026-10-16 | v0.1.0 | 初版建立，確立交接架構、進度基線、風險清單與待辦事項 | KiraIch |
-| YYYY-MM-DD | v0.x.x | （範例）完成技術選型，更新第 3、4、10 章 | （待填） |
+| 2026-10-16 | v0.2.0 | 納入完整開發規格書，完成 Phase 1 與全模組骨架，新增別名機制、風險 R-06、R-07 與 ADR 三筆 | KiraIch |
+| YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---
 

@@ -1,0 +1,59 @@
+# PsyTest NVIDIA 工作站設定
+# 適用：Linux/Windows + NVIDIA GPU（CUDA），追求最大吞吐。
+
+project:
+  name: "PsyTest"
+  version: "0.2.0"
+  output_dir: "data/output"
+
+backend:
+  auto_detect: true
+  force: "cuda"
+  gpu_layers: "max"
+  max_memory_gb: null
+  temperature_limit: 85
+
+models:
+  embedding:
+    path: "models/embeddinggemma2-q8.gguf"
+    context_length: 2048
+    batch_size: 64
+    gpu_layers: "auto"
+
+  laya:
+    path: "models/laya-421m-bf16.gguf"
+    context_length: 512
+    temperature: 0.0
+    gpu_layers: "auto"
+
+  llm:
+    provider: "ollama"
+    model_name: "auto"
+    host: "http://localhost:11434"
+    temperature: 0.9
+    top_p: 0.9
+    max_tokens: 512
+    repeat_penalty: 1.1
+
+  tts:
+    engine: "auto"
+    sample_rate: 24000
+    voice: "default"
+
+pipeline:
+  max_turns_per_session: 30
+  max_duration_minutes: 50
+  save_audio: true
+  save_embeddings: true
+  embedding_save_format: "float32"
+
+thermal:
+  enabled: false
+  check_interval_seconds: 30
+  throttle_threshold: 85
+  cooldown_seconds: 120
+
+logging:
+  level: "INFO"
+  file: "logs/psytest.log"
+  console: true

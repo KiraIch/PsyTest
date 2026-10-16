@@ -1,21 +1,23 @@
 # models — 模型檔案說明
 
-本目錄用於存放本機推論所需之大型語言模型權重檔。基於檔案體積與授權散佈限制，權重檔不納入 Git 版本控制，已於根目錄 `.gitignore` 中排除。
+本目錄用於存放本機推論所需之模型權重檔。基於檔案體積與授權散佈限制，權重檔不納入 Git 版本控制，已於根目錄 `.gitignore` 中排除。
 
 - 最後更新：2026-10-16
 - 維護者：KiraIch
 
 ## 檔案清單
 
-| 檔案名稱 | 用途 | 大小（約） | Git 狀態 |
-|---|---|---|---|
-| `Laya-BF16.gguf` | 主要生成模型 | 805 MB | 已排除，不提交 |
-| `embeddinggemma-2-Q8_0.gguf` | 語意嵌入模型 | 296 MB | 已排除，不提交 |
+規格書命名與本機實際檔名存在差異，程式會自動嘗試別名（見 `src/config.py` 的 `MODEL_ALIASES`），以下兩組視為等價。
+
+| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） | Git 狀態 |
+|---|---|---|---|---|
+| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 已排除，不提交 |
+| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | 已排除，不提交 |
 
 ## 取得方式
 
 1. 由專案維護者經由內部安全管道提供，不得使用公開連結散佈。
-2. 取得後請放置於本目錄，路徑須與上表一致。
+2. 取得後請放置於本目錄，檔名使用上表任一別名即可。
 3. 放置完成後請執行完整性驗證（見下一節）。
 
 ## 完整性驗證
@@ -31,6 +33,15 @@ shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
 |---|---|---|
 | `Laya-BF16.gguf` | （待補充） | （待補充） |
 | `embeddinggemma-2-Q8_0.gguf` | （待補充） | （待補充） |
+
+## 慢想層模型（Ollama）
+
+慢想層使用 Ollama 管理的 `fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive`（e2b 或 e4b 變體），不存放於本目錄。拉取方式：
+
+```bash
+ollama pull fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive
+ollama list
+```
 
 ## 授權注意
 

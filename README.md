@@ -1,346 +1,363 @@
 # PsyTest
 
-PsyTest 是一個以大型語言模型為輔助的心理測驗研究與應用專案，目標為提供可重現、可擴充、可稽核的測驗流程、題庫管理與結果分析能力。本文件為專案的正式說明文件，將隨專案進展定期更新。
+PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用「快思慢想」架構，自動生成具備生態效度的心理諮商模擬數據。所有模型推理均可在本機完成，降低敏感資料外傳風險。本文件為專案正式說明文件，採定期更新制。
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v0.1.0
+- 文件版本：v0.2.0
 - 最後更新：2026-10-16
-- 文件狀態：初期建立，內容將定期更新。
+- 專案狀態：Phase 1 完成（基礎設施），Phase 2 進行中。詳細進度見 `HANDOVER.md`。
 
 ---
 
 ## 目錄
 
-1. [專案概述](#1-專案概述)
-2. [主要功能](#2-主要功能)
-3. [技術架構](#3-技術架構)
-4. [系統需求](#4-系統需求)
-5. [專案結構](#5-專案結構)
-6. [模型檔案](#6-模型檔案)
-7. [快速開始](#7-快速開始)
-8. [設定說明](#8-設定說明)
-9. [開發指南](#9-開發指南)
-10. [測試與品質](#10-測試與品質)
-11. [資料與隱私](#11-資料與隱私)
-12. [常見問題](#12-常見問題)
+1. [專案簡介與架構](#1-專案簡介與架構)
+2. [系統需求](#2-系統需求)
+3. [安裝步驟](#3-安裝步驟)
+4. [模型下載與放置](#4-模型下載與放置)
+5. [Ollama 設定](#5-ollama-設定)
+6. [快速開始](#6-快速開始)
+7. [設定檔說明](#7-設定檔說明)
+8. [輸出數據格式](#8-輸出數據格式)
+9. [常見問題排解](#9-常見問題排解)
+10. [倫理聲明與使用條款](#10-倫理聲明與使用條款)
+11. [開發指南](#11-開發指南)
+12. [測試](#12-測試)
 13. [版本紀錄](#13-版本紀錄)
-14. [貢獻方式](#14-貢獻方式)
-15. [授權](#15-授權)
-16. [聯絡方式](#16-聯絡方式)
+14. [授權與聯絡方式](#14-授權與聯絡方式)
 
 ---
 
-## 1. 專案概述
+## 1. 專案簡介與架構
 
-### 1.1 背景
+### 1.1 簡介
 
-本專案起源於對心理測驗數位化與自動化的研究需求，期望在保障受測者隱私與測驗信效度的前提下，運用自然語言處理技術提升施測、計分與報告產出的效率。
+本系統用於生成心理諮商教學與研究用的模擬數據，不提供臨床診斷功能。系統由五個層級組成：五感層負責多模態標註，快思層負責對話節奏與情緒觸發，慢想層負責扮演虛擬心理個案，聲音層負責情感語音合成，數據管線負責整合輸出為結構化 JSONL 數據庫。
 
-### 1.2 目標
+### 1.2 架構圖
 
-- 建立標準化的題庫格式與版本管理機制。
-- 提供一致的施測流程與計分邏輯，降低人為誤差。
-- 支援本機模型推論，減少敏感資料外傳之風險。
-- 保留完整的變更紀錄與交接文件，確保專案可長期維護。
+```text
+                    ┌─────────────────────────────────┐
+                    │        數據生成管線 (Pipeline)    │
+                    │  session / batch / collector    │
+                    │        output_formatter         │
+                    └───────┬─────────┬───────┬───────┘
+                            │         │       │
+              ┌─────────────┘         │       └─────────────┐
+              ▼                       ▼                     ▼
+    ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+    │   五感層          │  │   快思層          │  │   慢想層          │
+    │  Perception      │  │  Fast Think      │  │  Slow Think      │
+    │                  │  │                  │  │                  │
+    │ EmbeddingGemma 2 │  │ Laya 421M        │  │ Ollama Gemma 4   │
+    │ audio / visual   │  │ rhythm / emotion │  │ persona/director │
+    └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
+             │                     │                     │
+             └─────────────┬───────┴──────────┬──────────┘
+                           ▼                  ▼
+                 ┌──────────────────┐ ┌──────────────────┐
+                 │   聲音層 (Voice)  │ │  督導報告        │
+                 │ TTS / director   │ │  Supervisor      │
+                 └──────────────────┘ └──────────────────┘
+                           │
+                           ▼
+                 ┌──────────────────┐
+                 │  硬體後端 (Backend) │
+                 │ Metal/CUDA/ROCm/CPU │
+                 └──────────────────┘
+```
 
-### 1.3 非目標
+### 1.3 模組對應表
 
-- 本專案不提供臨床診斷功能，所有結果僅供研究與參考使用。
-- 本專案不取代專業心理師之判斷，實際應用須符合相關法規與倫理規範。
-
----
-
-## 2. 主要功能
-
-以下為規劃中的功能藍圖，實作狀態將定期更新。標示為「規劃中」之項目代表尚未實作。
-
-| 功能模組 | 說明 | 狀態 |
-|---|---|---|
-| 題庫管理 | 題目新增、修改、版本控制、匯入與匯出 | 規劃中 |
-| 施測流程 | 測驗建立、作答收集、流程控制 | 規劃中 |
-| 計分引擎 | 計分規則設定、自動計分、常模比對 | 規劃中 |
-| 報告產出 | 個人報告與群體統計報表產出 | 規劃中 |
-| 本機推論 | 基於 GGUF 模型的本機語意分析與輔助解讀 | 規劃中 |
-| 權限管理 | 施測者與受測者角色區分 | 規劃中 |
-
----
-
-## 3. 技術架構
-
-### 3.1 現況說明
-
-專案目前處於初期建置階段，已確認之資產如下：
-
-- `opencode.json`：OpenCode 開發環境之模型路由與上下文設定檔，定義主力模型與顧問模型的分工。
-- `models/`：本機大型語言模型權重存放目錄，內容不納入版本控制。
-
-應用層程式碼、題庫格式與計分邏輯將於後續迭代中建立，架構決策將同步記錄於 `HANDOVER.md`。
-
-### 3.2 模型資產
-
-| 檔案名稱 | 用途 | 大小（約） | 備註 |
+| 層級 | 目錄 | 關鍵模型 | 說明 |
 |---|---|---|---|
-| `Laya-BF16.gguf` | 主要生成模型 | 805 MB | 本機推論用，不提交至 Git |
-| `embeddinggemma-2-Q8_0.gguf` | 語意嵌入模型 | 296 MB | 語意檢索與相似度計算用，不提交至 Git |
-
-詳細取得與驗證方式請見第 6 章。
-
-### 3.3 開發工具
-
-- 版本控制：Git
-- AI 輔助開發：OpenCode（設定檔見 `opencode.json`）
-- 文件格式：Markdown（`README.md`、`HANDOVER.md`）
-
-後續導入之語言、框架與相依套件將於此章節補充，並同步更新 `.gitignore`。
+| 五感層 | `src/perception/` | EmbeddingGemma 2 Q8 | 文字、音訊、影像嵌入與特徵分析 |
+| 快思層 | `src/fast_think/` | Laya 421M BF16 | 對話節奏控制、情緒路由、危機評估 |
+| 慢想層 | `src/slow_think/` | Gemma 4 Uncensored（Ollama） | 虛擬個案扮演、人格管理、導演指令 |
+| 聲音層 | `src/voice/` | Orpheus / ChatTTS / pyttsx3 | 情感語音合成 |
+| 數據管線 | `src/pipeline/` | 無（整合層） | 單場生成、批量排程、JSONL 輸出 |
+| 後端 | `src/backend/` | 無 | Metal、CUDA、ROCm、CPU 自動偵測 |
+| 督導報告 | `src/report/` | 無 | AI 督導分析 |
 
 ---
 
-## 4. 系統需求
+## 2. 系統需求
 
-### 4.1 基本需求
+### 2.1 最低需求
 
-- 作業系統：macOS 13 以上、Ubuntu 22.04 以上，或 Windows 10 以上（含 WSL2）
-- Git：2.40 以上
-- 磁碟空間：至少 5 GB 可用空間（模型權重約需 1.2 GB，另需保留執行期暫存空間）
-- 記憶體：建議 16 GB 以上（本機載入 BF16 模型時需要較大記憶體）
+- 作業系統：macOS 13 以上（Apple Silicon）、Ubuntu 22.04 以上、Windows 10 以上（含 WSL2）。
+- Python：3.10 以上（已驗證 3.13）。
+- Git：2.40 以上。
+- 磁碟空間：至少 5 GB 可用（模型權重約 1.2 GB，另需輸出與暫存空間）。
+- 記憶體：最低 8 GB（純 CPU 模式），建議 16 GB 以上（本機載入 BF16 模型）。
 
-### 4.2 選用需求
+### 2.2 建議規格
 
-- Python 3.10 以上（若後續採用 Python 實作應用層）
-- Node.js 18 以上（若後續採用 TypeScript 實作應用層）
+| 用途 | 建議配備 |
+|---|---|
+| MacBook Air 開發 | Apple Silicon，16 GB 以上記憶體，參考 `configs/macbook_air.yaml` |
+| NVIDIA 工作站 | CUDA 顯示卡，24 GB 以上記憶體，參考 `configs/cuda_workstation.yaml` |
+| 無 GPU 環境 | 多核心 CPU，參考 `configs/cpu_only.yaml` |
 
-實際相依版本將於 `requirements.txt` 或 `package.json` 建立後，以該檔案為準。
+### 2.3 外部服務
 
----
-
-## 5. 專案結構
-
-```text
-PsyTest/
-├── README.md            # 本文件，專案說明，將定期更新
-├── HANDOVER.md          # 交接與維運文件，將定期更新
-├── LICENSE              # Apache License 2.0 全文
-├── NOTICE               # 第三方聲明（如有，將定期更新）
-├── .gitignore           # Git 排除規則，將定期更新
-├── opencode.json        # OpenCode 模型路由設定
-├── models/
-│   ├── .gitkeep         # 佔位符，維持目錄結構（權重檔不提交）
-│   └── README.md        # 模型取得與驗證說明
-├── src/                 # 應用程式原始碼（規劃中）
-├── tests/               # 測試程式碼（規劃中）
-├── docs/                # 補充文件（規劃中）
-├── data/                # 資料目錄，僅保留結構，不提交實質資料
-│   ├── raw/
-│   ├── processed/
-│   └── exports/
-└── scripts/             # 維運與工具腳本（規劃中）
-```
-
-目前尚未建立的目錄將於實作時逐步新增。新增目錄時請同步更新本章節與 `.gitignore`。
+- Ollama：必須安裝並運行，用於慢想層 LLM 推理。詳見第 5 章。
 
 ---
 
-## 6. 模型檔案
+## 3. 安裝步驟
 
-基於檔案大小與授權散佈考量，模型權重檔不納入 Git 版本控制，已於 `.gitignore` 中排除。
-
-### 6.1 取得方式
-
-模型檔案需由專案成員另行提供或依內部管道下載。取得後請放置於以下路徑：
-
-```text
-models/Laya-BF16.gguf
-models/embeddinggemma-2-Q8_0.gguf
-```
-
-### 6.2 完整性驗證
-
-建議在取得檔案後執行雜湊驗證，確認檔案完整。雜湊值將於內部管道提供後補充於 `models/README.md`。
-
-範例（macOS / Linux）：
-
-```bash
-shasum -a 256 models/Laya-BF16.gguf
-shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
-```
-
-### 6.3 注意事項
-
-- 請勿將模型檔案上傳至公開儲存庫、Issue 附件或公開雲端連結。
-- 請確認模型原始授權允許本專案之使用方式，並將授權資訊記錄於 `NOTICE` 檔案。
-
----
-
-## 7. 快速開始
-
-本章節將隨應用層實作完成後補充完整步驟。目前提供儲存庫初始化後的基本操作。
-
-### 7.1 複製專案
+### 3.1 通用步驟
 
 ```bash
 git clone https://github.com/KiraIch/PsyTest.git
 cd PsyTest
+pip install -r requirements.txt
+python -m src.backend.detector
+python scripts/validate_setup.py
 ```
 
-### 7.2 確認忽略規則
+或使用快捷指令：
 
 ```bash
-git status
-git check-ignore -v models/Laya-BF16.gguf
+make setup
+make check
 ```
 
-預期結果為模型檔案被 `.gitignore` 排除，不會出現在待提交清單中。
+### 3.2 各平台 llama-cpp-python 安裝
 
-### 7.3 放置模型檔案
+`llama-cpp-python` 必須依後端重新編譯，否則 GPU 加速不會啟用。
 
-依第 6 章說明，將模型檔案放置於 `models/` 目錄後，確認應用層（建置中）可正常讀取。
+```bash
+# macOS（Metal 自動啟用）
+CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+
+# NVIDIA CUDA
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+
+# AMD ROCm
+CMAKE_ARGS="-DGGML_HIP=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+
+# 純 CPU（使用 OpenBLAS 加速）
+CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS" pip install llama-cpp-python --force-reinstall --no-cache-dir
+```
+
+### 3.3 Windows
+
+```bat
+scripts\setup.bat
+```
 
 ---
 
-## 8. 設定說明
+## 4. 模型下載與放置
 
-### 8.1 OpenCode 設定
+模型權重檔不納入 Git 版本控制（已於 `.gitignore` 排除），需另行取得後放置於 `models/` 目錄。
 
-`opencode.json` 定義開發期間的模型分工：
+### 4.1 檔名對照
 
-- `muse-main`：主力執行模型，負責程式碼生成、修改、測試與文件撰寫。
-- `gemini-super`：顧問模型，負責架構規劃、複雜除錯與程式碼審查。
+規格書命名與本機實際檔名存在差異，程式會自動嘗試別名（見 `src/config.py` 的 `MODEL_ALIASES`），以下兩組視為等價：
 
-修改此檔案前請閱讀檔案內註解，並於 `HANDOVER.md` 記錄變更原因。
+| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） |
+|---|---|---|---|
+| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB |
+| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB |
 
-### 8.2 環境變數
+### 4.2 放置與驗證
 
-後續如需設定 API 金鑰或服務位址，請建立 `.env` 檔案，並參考 `.env.example` 格式。`.env` 已於 `.gitignore` 中排除，禁止提交至版本控制。
+```bash
+ls -lh models/
+shasum -a 256 models/Laya-BF16.gguf
+shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
+python -m src.backend.detector
+```
 
-目前 `.env.example` 尚未建立，將於需要外部服務時補充。
+詳細說明見 `models/README.md`。請勿將權重檔上傳至公開儲存庫或公開連結。
 
 ---
 
-## 9. 開發指南
+## 5. Ollama 設定
 
-### 9.1 分支策略
+### 5.1 安裝與啟動
 
-- `main`：穩定分支，僅接受經審查的合併。
-- `develop`：整合分支，日常開發以此為基準。
-- `feature/<名稱>`：功能分支，命名應簡潔且具描述性，例如 `feature/scoring-engine`。
-- `fix/<名稱>`：修正分支，例如 `fix/score-overflow`。
-- `docs/<名稱>`：文件分支，例如 `docs/update-readme-v02`。
+- macOS：安裝 Ollama 應用程式後開啟即可，位址為 `http://localhost:11434`。
+- Linux：執行 `ollama serve` 啟動服務。
+- Windows：啟動 Ollama 後確認 `http://localhost:11434` 可連線。
+- 可經由環境變數 `OLLAMA_HOST` 覆寫位址。
 
-### 9.2 提交訊息規範
+### 5.2 拉取模型
 
-採用 Conventional Commits 格式：
+```bash
+ollama pull fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive
+ollama list
+```
+
+### 5.3 模型名稱偵測
+
+系統會自動掃描已安裝模型，模糊匹配包含 `gemma`、`uncensored`、`hauhau`、`aggressive` 任一關鍵字的模型，支援 e2b 與 e4b 變體。若找不到，將回退至其他可用的 4B 以上模型。也可在設定檔或環境變數 `OLLAMA_MODEL` 明確指定。
+
+---
+
+## 6. 快速開始
+
+### 6.1 環境檢查
+
+```bash
+python -m src.backend.detector
+python scripts/validate_setup.py
+```
+
+### 6.2 生成第一場諮商（Phase 5 完成後）
+
+```bash
+python scripts/generate_session.py \
+  --persona data/personas/mdd_severe.yaml \
+  --scenario data/scenarios/initial_session.yaml \
+  --output data/output/ \
+  --save-audio --verbose
+```
+
+目前 `SessionGenerator` 排定於 Phase 5 實作，現階段該指令僅驗證參數與檔案存在。
+
+### 6.3 批量生成（Phase 5 完成後）
+
+```bash
+python scripts/batch_generate.py \
+  --config configs/default.yaml \
+  --personas mdd_severe,bpd_crisis,ptsd_combat \
+  --sessions-per-persona 10 \
+  --output data/output/ \
+  --resume
+```
+
+### 6.4 互動測試（Phase 5 完成後）
+
+```bash
+python scripts/interactive_session.py --persona data/personas/bpd_crisis.yaml
+```
+
+### 6.5 常用快捷指令
+
+```bash
+make check     # 硬體偵測與環境驗證
+make test      # 執行測試
+make generate  # 單場生成
+make batch     # 批量生成
+make clean     # 清理輸出與暫存
+```
+
+---
+
+## 7. 設定檔說明
+
+設定檔位於 `configs/` 目錄，由 `src/config.py` 載入，支援環境變數覆寫（見 `.env.example`）。
+
+| 檔案 | 用途 |
+|---|---|
+| `configs/default.yaml` | 預設設定，後端自動偵測 |
+| `configs/macbook_air.yaml` | MacBook Air 優化（溫度上限 80 度，批次縮小） |
+| `configs/cuda_workstation.yaml` | NVIDIA 工作站（最大吞吐） |
+| `configs/cpu_only.yaml` | 純 CPU（功能完整，速度較慢） |
+
+主要區段：`project`、`backend`（`force` 可為 null、metal、cuda、rocm、cpu）、`models`（embedding、laya、llm、tts）、`pipeline`、`thermal`、`logging`。
+
+環境變數覆寫對照：`OLLAMA_HOST`、`OLLAMA_MODEL`、`PSYTEST_OUTPUT_DIR`、`PSYTEST_SAVE_AUDIO`、`PSYTEST_SAVE_EMBEDDINGS`、`PSYTEST_MAX_MEMORY_GB`、`PSYTEST_GPU_LAYERS`、`PSYTEST_TEMPERATURE_LIMIT`、`PSYTEST_LOG_LEVEL`。複製 `.env.example` 為 `.env` 後填寫（`.env` 禁止提交）。
+
+個案設定位於 `data/personas/`（YAML，含診斷、背景、防衛機制、觸發點等），場景設定位於 `data/scenarios/`。
+
+---
+
+## 8. 輸出數據格式
+
+主要格式為 JSONL，每行一輪對話，包含諮商師文本、個案文本與導演指令、音訊特徵、視覺特徵、心理標註、Laya 決策與三組 768 維嵌入向量。完整欄位定義見規格書 4.6 節與 `src/pipeline/output_formatter.py`。
+
+輸出結構：
 
 ```text
-<type>(<scope>): <簡短描述>
-
-<詳細說明，必要時補充>
-
-Refs: #<議題編號>
+data/output/
+├── manifest.json
+├── sessions/session_001.jsonl
+├── audio/session_001_turn_01.wav
+└── annotations/session_001_annotations.json
 ```
 
-常用 type：`feat`、`fix`、`docs`、`chore`、`refactor`、`test`、`config`。
-
-範例：
-
-```text
-docs(readme): 補充模型檔案驗證步驟
-```
-
-### 9.3 程式碼審查
-
-- 所有合併至 `main` 或 `develop` 的變更均須經過至少一人審查。
-- 涉及計分邏輯、個資處理或授權變更者，須經專案負責人核准。
+`manifest.json` 記錄數據集名稱、場次、輪數、音訊總時長、個案清單、模態、嵌入維度、硬體與使用模型版本。驗證指令：`python scripts/validate_output.py --input data/output/batch_001/ --check-embeddings --check-audio`。
 
 ---
 
-## 10. 測試與品質
+## 9. 常見問題排解
 
-測試策略將於應用層建立後實施，規劃如下：
+### Q1：為什麼 `models/` 在 GitHub 上是空的？
 
-- 單元測試：覆蓋計分函式、題庫解析、工具函式。
-- 整合測試：覆蓋施測流程端到端路徑。
-- 資料驗證測試：確保題庫格式變更不會破壞既有測驗。
-- 文件檢查：每次更新 `README.md` 與 `HANDOVER.md` 後，確認章節連結與版本號一致。
+權重檔體積過大且涉及散佈限制，已排除於版本控制。請依第 4 章另行取得。
 
-在測試框架確定前，提交前至少應執行 `git status` 與 `git diff --check`，避免提交空白錯誤與機敏資訊。
+### Q2：`git push` 出現檔案過大錯誤？
+
+檢查是否誤加模型或資料檔：`git status --short`、`git check-ignore -v <路徑>`。誤加時以 `git rm --cached <路徑>` 移除，並檢查 `.gitignore`。
+
+### Q3：llama-cpp-python 無法啟用 GPU？
+
+必須依第 3.2 節以對應 `CMAKE_ARGS` 重新安裝，不可直接使用預編譯輪檔。
+
+### Q4：Ollama 連線失敗？
+
+確認服務是否運行：`curl http://localhost:11434/api/tags`。macOS 以應用程式啟動，Linux 執行 `ollama serve`，或設定 `OLLAMA_HOST`。
+
+### Q5：找不到模型（model not found）？
+
+執行 `ollama list` 確認已拉取 Gemma 4 變體。系統採模糊匹配，若名稱差異過大，請以 `OLLAMA_MODEL` 明確指定。
+
+### Q6：MacBook Air 過熱？
+
+改用 `configs/macbook_air.yaml`，系統會在 80 度以上降速。溫度持續超過 85 度應暫停生成。
+
+### Q7：記憶體不足？
+
+不要同時載入所有模型。系統採按需載入，批量生成時保持串行，必要時改用 `configs/cpu_only.yaml` 並縮小批次。
+
+---
+
+## 10. 倫理聲明與使用條款
+
+1. 本系統產出之所有個案內容均為虛構教學材料，僅供臨床心理學教學與研究使用，不構成臨床診斷或治療建議。
+2. 模擬結果不得直接用於實際個案處置，實際應用須由合格專業人員判斷並符合相關法規與倫理規範。
+3. 危機個案模擬可表達自傷或自殺意念與情緒，可描述過去病史，但系統不得產出具體自傷方法的步驟、工具取得方式等可操作內容。
+4. 受測者與真實個案資料屬於敏感性個人資料，禁止提交至版本控制。開發與測試僅可使用去識別化或合成資料。
+5. 使用、修改或散佈本專案須遵守 Apache License 2.0，並保留授權與著作權聲明。模型權重另有其原始授權，使用前須確認其散佈與商用條款。
+
+---
+
+## 11. 開發指南
+
+分支策略：`main` 為穩定分支，`develop` 為整合分支，功能分支命名為 `feature/<名稱>`，修正為 `fix/<名稱>`，文件為 `docs/<名稱>`。提交訊息採用 Conventional Commits（例如 `feat(pipeline): 實作單場生成器`）。合併至 `main` 或 `develop` 須經至少一人審查，涉及計分邏輯、個資處理或授權變更者須經負責人核准。實作順序依 Phase 1 至 Phase 7 進行，詳見 `HANDOVER.md`。
+
+---
+
+## 12. 測試
 
 ```bash
-git diff --check
-git status --short
+pytest tests/ -v
 ```
 
----
-
-## 11. 資料與隱私
-
-1. 受測者資料屬於敏感性個人資料，禁止提交至版本控制，亦禁止存放於公開位置。
-2. `data/raw/`、`data/processed/`、`data/exports/`、`results/`、`uploads/` 均已於 `.gitignore` 中排除，僅保留目錄結構。
-3. 開發與測試請使用去識別化或合成資料，不得使用真實受測資料進行開發測試。
-4. 正式部署前須完成隱私影響評估，並確認符合適用法規。
-
----
-
-## 12. 常見問題
-
-### Q1：為什麼 `models/` 目錄在 GitHub 上是空的？
-
-模型權重檔體積過大且涉及散佈限制，已刻意排除於版本控制之外。請依第 6 章方式另行取得。
-
-### Q2：`git push` 時出現檔案過大錯誤應如何處理？
-
-請檢查是否誤將模型檔或資料檔加入暫存區，執行以下指令確認：
-
-```bash
-git status --short
-git check-ignore -v <可疑檔案路徑>
-```
-
-如確認為誤加，請使用 `git rm --cached <路徑>` 移除暫存，並檢查 `.gitignore` 是否需補充規則。
-
-### Q3：文件多久更新一次？
-
-`README.md`、`HANDOVER.md`、`.gitignore` 均採定期更新制。原則為每次功能發佈、架構變更或交接前必須更新，日常則依實際變更即時修訂。
+測試對照：`test_backend.py` 驗證硬體偵測與 CPU fallback，`test_embedding.py`、`test_laya.py`、`test_ollama.py`、`test_tts.py`、`test_pipeline.py` 分別對應各層。需權重或服務的案例在缺檔或未運行時自動跳過，完整啟用時程見 `HANDOVER.md`。提交前至少執行 `git diff --check` 與 `git status --short`。
 
 ---
 
 ## 13. 版本紀錄
 
-本表記錄文件本身的重大修訂，程式版本標籤另以 Git tag 管理。
-
 | 日期 | 版本 | 說明 | 作者 |
 |---|---|---|---|
 | 2026-10-16 | v0.1.0 | 初版建立，確立文件結構與維護規範 | KiraIch |
-| YYYY-MM-DD | v0.x.x | （範例）新增計分引擎章節 | （待填） |
+| 2026-10-16 | v0.2.0 | 納入完整開發規格書，完成 Phase 1（基礎設施）與全模組骨架，對應快思慢想架構 | KiraIch |
+| YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2 核心引擎 | （待填） |
 
 ---
 
-## 14. 貢獻方式
+## 14. 授權與聯絡方式
 
-1. 請先閱讀 `HANDOVER.md` 了解目前進度與待辦事項。
-2. 建立功能分支並遵循第 9 章之分支與提交規範。
-3. 更新相關文件與測試，確保 `README.md` 與 `HANDOVER.md` 同步修訂。
-4. 發起 Pull Request 並指定審查者，說明變更目的、影響範圍與驗證方式。
-5. 外部貢獻者之貢獻內容將依 Apache License 2.0 授權納入本專案。
+本專案採用 Apache License 2.0 授權，授權全文見 `LICENSE`，第三方聲明見 `NOTICE`。維護者為 KiraIch，儲存庫位址為 https://github.com/KiraIch/PsyTest.git。議題請經由 GitHub Issues 提交，並附重現步驟、環境資訊與已去敏的相關日誌。
 
 ---
 
-## 15. 授權
-
-本專案採用 Apache License 2.0 授權。
-
-- 授權全文請見 `LICENSE` 檔案。
-- 第三方元件聲明請見 `NOTICE` 檔案（如適用）。
-- 使用、修改或散佈本專案時，請保留授權聲明與著作權聲明。
-
----
-
-## 16. 聯絡方式
-
-- 維護者：KiraIch
-- 儲存庫：https://github.com/KiraIch/PsyTest.git
-- 議題回報：請透過 GitHub Issues 提交，並附上重現步驟、環境資訊與相關日誌（請先移除敏感資訊）。
-
----
-
-*本文件採定期更新制。下次預定檢視日期：依專案迭代排程，原則不超過三個月。更新時請同步調整文件版本、最後更新日期與第 13 章版本紀錄。*
+*本文件採定期更新制，下次預定檢視日期依專案迭代排程，原則不超過三個月。更新時請同步調整文件版本、最後更新日期與第 13 章版本紀錄。*

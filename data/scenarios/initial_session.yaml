@@ -1,0 +1,15 @@
+# 諮商場景：初次會談
+# 目標：建立關係、收集主訴、初步評估。
+
+name: "initial_session"
+description: "個案首次前來諮商，諮商師進行開場、知情同意與主訴收集。"
+max_turns: 20
+counselor_opening: "您好，謝謝您今天過來。這裡是保密的空間，您可以用自己的步調說說最近的狀況。想先從哪裡開始都可以。"
+techniques:
+  - "open_question"
+  - "reflective_listening"
+  - "summarization"
+end_conditions:
+  - "達到 20 輪"
+  - "完成主訴收集"
+  - "個案主動表示想結束"

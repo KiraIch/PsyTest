@@ -1,0 +1,61 @@
+# PsyTest 預設設定
+# 適用：一般開發環境，後端自動偵測。
+# 模型檔名採規格書命名；載入時會自動嘗試本機實際檔名別名
+#（見 src/config.py MODEL_ALIASES 與 models/README.md）。
+
+project:
+  name: "PsyTest"
+  version: "0.2.0"
+  output_dir: "data/output"
+
+backend:
+  auto_detect: true
+  force: null  # null, "metal", "cuda", "rocm", "cpu"
+  gpu_layers: "auto"  # "auto", "max", "none", 或具體數字
+  max_memory_gb: null  # null = 自動偵測
+  temperature_limit: 85  # 攝氏，超過則降速
+
+models:
+  embedding:
+    path: "models/embeddinggemma2-q8.gguf"
+    context_length: 2048
+    batch_size: 32
+    gpu_layers: "auto"
+
+  laya:
+    path: "models/laya-421m-bf16.gguf"
+    context_length: 512
+    temperature: 0.0
+    gpu_layers: "auto"
+
+  llm:
+    provider: "ollama"
+    model_name: "auto"  # 自動偵測 Gemma 4 Uncensored
+    host: "http://localhost:11434"
+    temperature: 0.9
+    top_p: 0.9
+    max_tokens: 512
+    repeat_penalty: 1.1
+
+  tts:
+    engine: "auto"  # "auto", "orpheus", "chattts", "pyttsx3"
+    sample_rate: 24000
+    voice: "default"
+
+pipeline:
+  max_turns_per_session: 30
+  max_duration_minutes: 50
+  save_audio: true
+  save_embeddings: true
+  embedding_save_format: "float32"  # "float32", "float16", "int8"
+
+thermal:
+  enabled: true
+  check_interval_seconds: 30
+  throttle_threshold: 85
+  cooldown_seconds: 120
+
+logging:
+  level: "INFO"
+  file: "logs/psytest.log"
+  console: true
