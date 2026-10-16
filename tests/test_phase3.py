@@ -201,6 +201,14 @@ def test_director_broken_json_uses_defaults() -> None:
     assert notes.tone == "neutral"
 
 
+def test_director_truncated_block_recovers_dialog() -> None:
+    """max_tokens 截斷的標籤應移除殘段並保留對白。"""
+    dialog, notes = Director().parse("我不知道該怎麼辦。<director>\n{\"tone\": \"極度低")
+    assert "我不知道該怎麼辦。" in dialog
+    assert "<director" not in dialog
+    assert notes.tone == "neutral"
+
+
 def test_director_clamps_ranges() -> None:
     """超範圍數值應被鉗制。"""
     _, notes = Director().parse('對白<director>{"volume": 9, "speed": 0.1}</director>')

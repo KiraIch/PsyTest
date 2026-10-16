@@ -149,6 +149,11 @@ class Director:
             raise ValueError("llm_output 不可為空")
         match = _DIRECTOR_RE.search(llm_output)
         if match is None:
+            # 無完整指令：可能是 max_tokens 截斷，移除尾部殘缺標籤後取用對白。
+            cleaned = re.sub(r"<director.*$", "", llm_output, flags=re.IGNORECASE | re.DOTALL).strip()
+            if cleaned:
+                logger.warning("導演指令缺失或遭截斷，套用預設值")
+                return cleaned, DirectorNotes()
             logger.warning("LLM 未生成導演指令，套用預設值")
             return llm_output.strip(), DirectorNotes()
         dialog = _DIRECTOR_RE.sub("", llm_output).strip()

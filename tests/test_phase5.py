@@ -267,6 +267,17 @@ def test_crisis_level_5_ends_session(tmp_path: Path) -> None:
     assert session["summary"]["max_crisis_level"] == 5
 
 
+def test_silence_cap_forces_speech() -> None:
+    """連續沉默一輪後應強制回應（不需模型）。"""
+    from src.pipeline.session_generator import SessionGenerator
+
+    config = load_config("configs/default.yaml")
+    generator = SessionGenerator(config, llm_client=_FakeLLM("嗨。"))
+    decision = generator._decide("上下文", 2, "狀態", silent_rounds=1)
+    assert decision["should_speak"] is True
+    assert decision["source"] == "rules-silence-cap"
+
+
 def test_validate_output_script(tmp_path: Path) -> None:
     """validate_output 腳本應通過合法輸出。"""
     import importlib.util

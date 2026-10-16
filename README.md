@@ -4,9 +4,9 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v0.7.0
+- 文件版本：v1.0.0
 - 最後更新：2026-10-16
-- 專案狀態：Phase 6 完成（輔助功能），Phase 7 待啟動。詳細進度見 `HANDOVER.md`。
+- 專案狀態：全階段完成（Phase 1 至 Phase 7），進入維護期。詳細進度見 `HANDOVER.md`。
 
 ---
 
@@ -72,13 +72,13 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 | 層級 | 目錄 | 關鍵模型 | 說明 |
 |---|---|---|---|
-| 五感層 | `src/perception/` | EmbeddingGemma 2 Q8 | 文字、音訊、影像嵌入與特徵分析 |
-| 快思層 | `src/fast_think/` | Laya 421M BF16 | 對話節奏控制、情緒路由、危機評估 |
+| 五感層 | `src/perception/` | EmbeddingGemma 2（ST 替代路徑） | 文字嵌入與音訊、視覺特徵分析；GGUF 待 llama.cpp 上游支援 |
+| 快思層 | `src/fast_think/` | 官方 laya 套件（multilingual） | 對話節奏控制、情緒路由、危機評估；GGUF 僅備援 |
 | 慢想層 | `src/slow_think/` | Gemma 4 Uncensored（Ollama） | 虛擬個案扮演、人格管理、導演指令 |
 | 聲音層 | `src/voice/` | Kokoro（sherpa-onnx）、ChatTTS、pyttsx3 | 情感語音合成，Orpheus 預設停用 |
 | 數據管線 | `src/pipeline/` | 無（整合層） | 單場生成、批量排程、JSONL 輸出 |
 | 後端 | `src/backend/` | 無 | Metal、CUDA、ROCm、CPU 自動偵測 |
-| 督導報告 | `src/report/` | 無 | AI 督導分析 |
+| 督導報告 | `src/report/` | 無（確定性規則） | AI 督導分析與 Markdown 報告 |
 
 ---
 
@@ -89,8 +89,8 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 - 作業系統：macOS 13 以上（Apple Silicon）、Ubuntu 22.04 以上、Windows 10 以上（含 WSL2）。
 - Python：3.10 以上（已驗證 3.13）。
 - Git：2.40 以上。
-- 磁碟空間：至少 5 GB 可用（模型權重約 1.2 GB，另需輸出與暫存空間）。
-- 記憶體：最低 8 GB（純 CPU 模式），建議 16 GB 以上（本機載入 BF16 模型）。
+- 磁碟空間：至少 15 GB 可用（Ollama 模型約 6.3GB，本機 GGUF 約 1.2GB，Kokoro 約 350MB，另需輸出與暫存空間）。
+- 記憶體：最低 8 GB（純 CPU 模式），建議 16 GB 以上（同時載入多模型時）。
 
 ### 2.2 建議規格
 
@@ -159,10 +159,10 @@ scripts\setup.bat
 
 規格書命名與本機實際檔名存在差異，程式會自動嘗試別名（見 `src/config.py` 的 `MODEL_ALIASES`），以下兩組視為等價：
 
-| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） |
-|---|---|---|---|
-| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB |
-| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB |
+| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） | 狀態 |
+|---|---|---|---|---|
+| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | llama.cpp 尚不支援 gemma-embedding2 架構，改用 ST 後端（需另行接受 HF 授權） |
+| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 非官方轉檔，張量形狀不符，決策改用官方 laya 套件 |
 
 ### 4.2 放置與驗證
 
@@ -271,7 +271,7 @@ make clean     # 清理輸出與暫存
 
 ## 8. 輸出數據格式
 
-主要格式為 JSONL，每行一輪對話，包含諮商師文本、個案文本與導演指令、音訊特徵、視覺特徵、心理標註、Laya 決策與三組 768 維嵌入向量。完整欄位定義見規格書 4.6 節與 `src/pipeline/output_formatter.py`。
+主要格式為 JSONL，每行一場會談，輪次含諮商師文本、個案文本與導演指令、音訊特徵、視覺特徵、心理標註、Laya 決策與三組 768 維嵌入向量。完整欄位定義見規格書 4.6 節與 `src/pipeline/output_formatter.py`。
 
 輸出結構：
 
@@ -335,7 +335,7 @@ data/output/
 
 ## 11. 開發指南
 
-分支策略：`main` 為穩定分支，`develop` 為整合分支，功能分支命名為 `feature/<名稱>`，修正為 `fix/<名稱>`，文件為 `docs/<名稱>`。提交訊息採用 Conventional Commits（例如 `feat(pipeline): 實作單場生成器`）。合併至 `main` 或 `develop` 須經至少一人審查，涉及計分邏輯、個資處理或授權變更者須經負責人核准。實作順序依 Phase 1 至 Phase 7 進行，詳見 `HANDOVER.md`。
+分支策略：`main` 為穩定分支，`develop` 為整合分支，功能分支命名為 `feature/<名稱>`，修正為 `fix/<名稱>`，文件為 `docs/<名稱>`。提交訊息採用 Conventional Commits（例如 `feat(pipeline): 實作單場生成器`）。合併至 `main` 或 `develop` 須經至少一人審查，涉及計分邏輯、個資處理或授權變更者須經負責人核准。全階段已完成，後續採維護期流程，詳見 `HANDOVER.md`。
 
 ---
 
@@ -345,7 +345,7 @@ data/output/
 pytest tests/ -v
 ```
 
-測試對照：`test_backend.py` 驗證硬體偵測與 CPU fallback，`test_embedding.py`、`test_laya.py`、`test_ollama.py`、`test_tts.py`、`test_pipeline.py` 分別對應各層。需權重或服務的案例在缺檔或未運行時自動跳過，完整啟用時程見 `HANDOVER.md`。提交前至少執行 `git diff --check` 與 `git status --short`。
+測試對照：`test_backend.py` 驗證硬體偵測，`test_embedding.py`、`test_laya.py`、`test_ollama.py`、`test_tts.py`、`test_pipeline.py` 分別對應各層，`test_phase3.py` 至 `test_phase6.py` 覆蓋智能層、聲音層、管線與輔助功能。缺權重、缺服務或架構不支援的案例會明確跳過（目前僅剩 GGUF 架構一項）。提交前至少執行 `git diff --check` 與 `git status --short`。
 
 ---
 
@@ -360,7 +360,7 @@ pytest tests/ -v
 | 2026-10-16 | v0.5.0 | 完成 Phase 4（Kokoro、ChatTTS、pyttsx3 三引擎，Orpheus 改 guarded），以 Kokoro 取代雲端方案 | KiraIch |
 | 2026-10-16 | v0.6.0 | 完成 Phase 5（單場生成、輸出格式化、批量排程、四支 CLI），端到端驗證通過 | KiraIch |
 | 2026-10-16 | v0.7.0 | 完成 Phase 6（溫度監控、記憶體管理、確定性督導報告） | KiraIch |
-| YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2 核心引擎 | （待填） |
+| 2026-10-16 | v1.0.0 | 完成 Phase 7：決策改用官方 laya 套件、嵌入加入 ST 替代路徑、文件定稿，進入維護期 | KiraIch |
 
 ---
 

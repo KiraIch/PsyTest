@@ -42,12 +42,91 @@ logger = get_logger(__name__)
 TEXT_PREFIX = "task: search result | query: "
 EMBEDDING_DIM = 768
 
+# sentence-transformers 替代模型（與本機 Q8 GGUF 同源，768 維）。
+ST_MODEL = "google/embeddinggemma-300m"
+
+_ST_INSTALL_HINT = "缺少 sentence-transformers，請執行 pip install sentence-transformers"
+
+_ST_GATED_HINT = (
+    "google/embeddinggemma-300m 為授權管制模型，請先以瀏覽器登入 HuggingFace "
+    "並於 https://huggingface.co/google/embeddinggemma-300m 接受授權，"
+    "再執行 hf download google/embeddinggemma-300m（需本機 HF 登入）"
+)
+
 _INSTALL_HINT = (
     "缺少 llama-cpp-python，請依 README.md 3.2 節依平台重新安裝，"
     "例如 macOS："
     'CMAKE_ARGS="-DGGML_METAL=on" '
     "pip install llama-cpp-python --force-reinstall --no-cache-dir"
 )
+
+# llama.cpp 尚不支援的嵌入架構（讀取 GGUF 中繼資料判定）。
+_UNSUPPORTED_ARCHS = {"gemma-embedding2"}
+
+
+def read_gguf_arch(path: str | Path) -> str:
+    """讀取 GGUF 檔案的 general.architecture 欄位。
+
+    Args:
+        path: GGUF 檔案路徑。
+
+    Returns:
+        架構字串，讀取失敗時回傳空字串（不拋出例外）。
+    """
+    import struct
+
+    try:
+        with open(path, "rb") as fh:
+            header = fh.read(24)
+            if len(header) < 24 or header[:4] != b"GGUF":
+                return ""
+            n_tensors, n_kv = struct.unpack("<qq", header[8:24])
+            for _ in range(min(n_kv, 64)):
+                raw_len = fh.read(8)
+                if len(raw_len) < 8:
+                    return ""
+                (key_len,) = struct.unpack("<q", raw_len)
+                if key_len <= 0 or key_len > 256:
+                    return ""
+                key = fh.read(key_len).decode("utf-8", errors="replace")
+                raw_type = fh.read(4)
+                if len(raw_type) < 4:
+                    return ""
+                (value_type,) = struct.unpack("<i", raw_type)
+                if key == "general.architecture" and value_type == 8:
+                    raw_vlen = fh.read(8)
+                    (value_len,) = struct.unpack("<q", raw_vlen)
+                    return fh.read(value_len).decode("utf-8", errors="replace")
+                _skip_gguf_value(fh, value_type)
+        return ""
+    except (OSError, struct.error, ValueError):
+        return ""
+
+
+def _skip_gguf_value(fh: object, value_type: int) -> None:
+    """跳過 GGUF kv 值（供 read_gguf_arch 使用）。"""
+    import struct
+
+    read = fh.read  # type: ignore[union-attr]
+    if value_type in {0, 1}:  # uint8, int8
+        read(1)
+    elif value_type in {2, 3, 6}:  # uint16, int16, float16
+        read(2)
+    elif value_type in {4, 5, 7, 11}:  # uint32, int32, float32, bool
+        read(4)
+    elif value_type in {8, 10}:  # string, array of ...: string→len+bytes
+        if value_type == 8:
+            (length,) = struct.unpack("<q", read(8))
+            read(length)
+        else:
+            (elem_type,) = struct.unpack("<i", read(4))
+            (count,) = struct.unpack("<q", read(8))
+            for _ in range(min(count, 1024)):
+                _skip_gguf_value(fh, elem_type)
+    elif value_type in {9, 12}:  # uint64, int64, float64
+        read(8)
+    else:
+        raise ValueError(f"未知的 GGUF 型別：{value_type}")
 
 
 def _resolve_gpu_layers(n_gpu_layers: Union[str, int, None]) -> int:
@@ -92,14 +171,18 @@ class EmbeddingEngine:
         n_ctx: int = 2048,
         n_gpu_layers: Union[str, int, None] = "auto",
         n_batch: int = 32,
+        backend: str = "llama_cpp",
+        st_model: str = ST_MODEL,
     ) -> None:
         """初始化引擎參數（實際載入請呼叫 :meth:`load`）。
 
         Args:
-            model_path: GGUF 權重路徑（支援規格別名）。
+            model_path: GGUF 權重路徑（llama_cpp 後端用，支援規格別名）。
             n_ctx: 上下文長度。
             n_gpu_layers: GPU offload 層數設定，預設 auto。
             n_batch: 批次大小。
+            backend: ``llama_cpp`` 或 ``st``（sentence-transformers）。
+            st_model: ST 後端的 HF 模型 ID。
 
         Raises:
             ValueError: 參數非法時。
@@ -108,17 +191,31 @@ class EmbeddingEngine:
             raise ValueError("n_ctx 必須為正整數")
         if n_batch <= 0:
             raise ValueError("n_batch 必須為正整數")
+        if backend not in {"llama_cpp", "st"}:
+            raise ValueError("backend 必須為 llama_cpp 或 st")
         self.model_path = resolve_model_path(model_path)
         self.n_ctx = n_ctx
         self.n_gpu_layers_setting = n_gpu_layers
         self.n_batch = n_batch
+        self.backend = backend
+        self.st_model = st_model
         self._model: Optional[object] = None
+        self._st: Optional[object] = None
         self._resolved_layers: Optional[int] = None
 
     @property
     def is_loaded(self) -> bool:
-        """模型是否已載入。"""
-        return self._model is not None
+        """任一後端就緒即為已載入。"""
+        return self._model is not None or self._st is not None
+
+    @property
+    def active_backend(self) -> str:
+        """回傳作用中後端（llama_cpp、st 或空字串）。"""
+        if self._st is not None:
+            return "st"
+        if self._model is not None:
+            return "llama_cpp"
+        return ""
 
     def load(self) -> "EmbeddingEngine":
         """載入模型（冪等，重複呼叫不會重複載入）。
@@ -127,12 +224,14 @@ class EmbeddingEngine:
             自身，支援鏈式呼叫。
 
         Raises:
-            ImportError: 未安裝 llama-cpp-python 時。
-            FileNotFoundError: 權重檔不存在時。
-            RuntimeError: 載入失敗時（含 BF16 相容性指引）。
+            ImportError: 所選後端依賴缺失時。
+            FileNotFoundError: GGUF 權重檔不存在時（llama_cpp 後端）。
+            RuntimeError: 載入失敗時（含架構與授權指引）。
         """
-        if self._model is not None:
+        if self.is_loaded:
             return self
+        if self.backend == "st":
+            return self._load_st()
         try:
             from llama_cpp import Llama
         except ImportError as exc:
@@ -141,6 +240,12 @@ class EmbeddingEngine:
             raise FileNotFoundError(
                 f"找不到 Embedding 模型檔：{self.model_path}，"
                 "請依 models/README.md 取得檔案"
+            )
+        arch = read_gguf_arch(self.model_path)
+        if arch in _UNSUPPORTED_ARCHS:
+            raise RuntimeError(
+                f"Embedding 模型架構尚不支援：{arch}（llama.cpp 未收錄）。"
+                f"可改用 sentence-transformers 後端（backend='st'），{_ST_GATED_HINT}"
             )
         layers = _resolve_gpu_layers(self.n_gpu_layers_setting)
         logger.info(f"載入 Embedding 模型：{self.model_path}（GPU 層數={layers}）")
@@ -154,6 +259,12 @@ class EmbeddingEngine:
                 verbose=False,
             )
         except Exception as exc:
+            message = str(exc)
+            if "unknown model architecture" in message:
+                raise RuntimeError(
+                    f"Embedding 模型載入失敗：llama.cpp 尚不支援此架構：{exc}。"
+                    f"可改用 sentence-transformers 後端（backend='st'），{_ST_GATED_HINT}"
+                ) from exc
             raise RuntimeError(
                 f"Embedding 模型載入失敗：{exc}。"
                 "若為 BF16 相容性問題，請確認 llama-cpp 為最新版，"
@@ -163,9 +274,34 @@ class EmbeddingEngine:
         logger.info("Embedding 模型載入完成")
         return self
 
+    def _load_st(self) -> "EmbeddingEngine":
+        """經 sentence-transformers 載入 HF 模型。
+
+        Returns:
+            自身。
+
+        Raises:
+            ImportError: 套件缺失時。
+            RuntimeError: 模型取得失敗時（含授權管制指引）。
+        """
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise ImportError(_ST_INSTALL_HINT) from exc
+        logger.info(f"載入 ST 嵌入模型：{self.st_model}")
+        try:
+            self._st = SentenceTransformer(self.st_model)
+        except Exception as exc:
+            message = str(exc)
+            if "gated" in message.lower() or "restricted" in message.lower() or "401" in message or "403" in message:
+                raise RuntimeError(f"ST 模型取得失敗（授權管制）：{_ST_GATED_HINT}") from exc
+            raise RuntimeError(f"ST 模型載入失敗：{exc}") from exc
+        logger.info("ST 嵌入模型載入完成")
+        return self
+
     def unload(self) -> None:
         """卸載模型並釋放記憶體（冪等）。"""
-        if self._model is None:
+        if self._model is None and self._st is None:
             return
         try:
             close = getattr(self._model, "close", None)
@@ -175,6 +311,7 @@ class EmbeddingEngine:
             logger.warning(f"模型卸載時發生非致命錯誤：{exc}")
         finally:
             self._model = None
+            self._st = None
             self._resolved_layers = None
         logger.info("Embedding 模型已卸載")
 
@@ -188,9 +325,27 @@ class EmbeddingEngine:
 
     def _require_model(self) -> object:
         """確認模型已載入，未載入時拋出指引明確的例外。"""
+        if self._st is not None:
+            return self._st
         if self._model is None:
             raise RuntimeError("模型尚未載入，請先呼叫 load()")
         return self._model
+
+    def _embed_via_st(self, texts: List[str]) -> List[np.ndarray]:
+        """經 sentence-transformers 批次編碼（含查詢前綴）。"""
+        model = self._st
+        if model is None:
+            raise RuntimeError("模型尚未載入，請先呼叫 load()")
+        prefixed = [TEXT_PREFIX + t.strip() for t in texts]
+        try:
+            encode_query = getattr(model, "encode_query", None)
+            if callable(encode_query):
+                vectors = encode_query(prefixed)
+            else:
+                vectors = model.encode(prefixed, convert_to_numpy=True)  # type: ignore[union-attr]
+            return [np.asarray(v, dtype=np.float32).ravel() for v in vectors]
+        except Exception as exc:
+            raise RuntimeError(f"ST 文字嵌入失敗：{exc}") from exc
 
     def embed_text(self, text: str) -> np.ndarray:
         """文字嵌入，回傳 768 維 float32 向量。
@@ -207,6 +362,14 @@ class EmbeddingEngine:
         """
         if not text or not text.strip():
             raise ValueError("輸入文字不可為空")
+        if self._st is not None:
+            vectors = self._embed_via_st([text])
+            vector = vectors[0]
+            if vector.shape[0] != EMBEDDING_DIM:
+                logger.warning(
+                    f"嵌入維度為 {vector.shape[0]}，與預期 {EMBEDDING_DIM} 不一致"
+                )
+            return vector
         model = self._require_model()
         try:
             result = model.create_embedding(TEXT_PREFIX + text.strip())  # type: ignore[union-attr]
@@ -236,6 +399,8 @@ class EmbeddingEngine:
             raise ValueError("輸入清單不可為空")
         if any(not t or not t.strip() for t in texts):
             raise ValueError("輸入清單不可包含空字串")
+        if self._st is not None:
+            return self._embed_via_st(texts)
         model = self._require_model()
         prefixed = [TEXT_PREFIX + t.strip() for t in texts]
         try:

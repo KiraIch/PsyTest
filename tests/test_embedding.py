@@ -48,13 +48,38 @@ def test_load_embedding_model() -> None:
 
 
 def test_embed_text() -> None:
-    """確認文字嵌入輸出維度正確（需 llama-cpp，否則跳過）。"""
+    """確認文字嵌入輸出維度正確（架構不支援時明確跳過）。"""
     pytest.importorskip("llama_cpp", reason="缺少 llama-cpp-python，跳過需權重的測試")
     from src.perception.embedding_engine import EmbeddingEngine
 
-    with EmbeddingEngine(_require_model()) as engine:
-        vec = engine.embed_text("個案表達強烈的無助感")
+    try:
+        with EmbeddingEngine(_require_model()) as engine:
+            vec = engine.embed_text("個案表達強烈的無助感")
+    except RuntimeError as exc:
+        if "尚不支援" in str(exc):
+            pytest.skip(f"llama.cpp 尚不支援該 GGUF 架構：{exc}")
+        raise
     assert vec.shape[0] == EMBEDDING_DIM
+
+
+def test_st_backend_missing_package() -> None:
+    """ST 後端缺套件時應給出安裝指引。"""
+    import sys
+
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    if "sentence_transformers" in sys.modules:
+        pytest.skip("sentence-transformers 已安裝，跳過缺件測試")
+    with pytest.raises(ImportError):
+        EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="st").load()
+
+
+def test_invalid_backend_rejected() -> None:
+    """非法後端應拋出 ValueError。"""
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    with pytest.raises(ValueError):
+        EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="不存在")
 
 
 def test_embed_text_rejects_empty() -> None:

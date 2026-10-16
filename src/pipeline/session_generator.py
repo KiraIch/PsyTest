@@ -224,12 +224,28 @@ class SessionGenerator:
         }
 
     def _decide(
-        self, context: str, turn: int, client_state: str
+        self, context: str, turn: int, client_state: str, silent_rounds: int = 0
     ) -> Dict[str, Any]:
-        """執行本輪決策（Laya 優先，失敗時規則降級）。"""
+        """執行本輪決策（Laya 優先，失敗時規則降級）。
+
+        產品規則：連續沉默至多一輪。上一輪已沉默時，本輪強制回應
+        （來源記為 rules-silence-cap），避免數據管線產出空洞會談。
+        """
+        if silent_rounds >= 1:
+            route = self.emotion_router.route(context, client_state)
+            return {
+                "should_speak": True,
+                "urgency": 0.5,
+                "emotion": route.emotion,
+                "intensity": route.intensity,
+                "defense": "unknown",
+                "pacing": PacingDecision(1.5, 1.0, False, "moderate"),
+                "source": "rules-silence-cap",
+            }
         if self.laya_engine is not None:
             try:
-                should = self.laya_engine.should_respond(context)  # type: ignore[union-attr]
+                state = f"{client_state}\n{context}" if client_state else context
+                should = self.laya_engine.should_respond(state)  # type: ignore[union-attr]
                 pacing = self.laya_engine.determine_pacing(context, turn)  # type: ignore[union-attr]
                 emotion = self.laya_engine.determine_emotion(context, client_state)  # type: ignore[union-attr]
                 return {
@@ -365,6 +381,7 @@ class SessionGenerator:
                     client_state=client_state,
                     model_name=model_name,
                     alliance=alliance,
+                    silent_rounds=silent_rounds,
                 )
             except Exception as exc:  # noqa: BLE001
                 error_rounds += 1
@@ -443,11 +460,12 @@ class SessionGenerator:
         client_state: str,
         model_name: str,
         alliance: float,
+        silent_rounds: int = 0,
     ) -> Dict[str, Any]:
         """執行單輪對話並回傳正規化輪次。"""
         counselor_text, technique = counselor.next_utterance(turn_id)
         context = "\n".join(history[-3:] + [f"諮商師：{counselor_text}"])
-        decision = self._decide(context, turn_id, client_state)
+        decision = self._decide(context, turn_id, client_state, silent_rounds)
         pacing = decision["pacing"]
         plan = self.rhythm.plan_from_pacing(pacing, decision["emotion"])
 

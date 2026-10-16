@@ -2,12 +2,12 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v0.7.0
+- 文件版本：v1.0.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
 - 接手人：（待填）
-- 專案狀態：Phase 6 完成，Phase 7 待啟動
+- 專案狀態：全階段完成，進入維護期
 - 下次預定檢視日期：2027-01-16（原則不超過三個月）
 
 ---
@@ -41,8 +41,9 @@
 ### 1.2 關鍵結論
 
 1. 規格書已定稿並記憶：五感層、快思層、慢想層、聲音層、數據管線，支援 Metal、CUDA、ROCm、CPU 四種後端，實作順序為 Phase 1 至 Phase 7。慢想層鎖定 e4b 變體。
-2. Phase 1 至 Phase 6 已完成：基礎設施、核心引擎、智能層、聲音層、數據管線、輔助功能均已實作並通過驗證。
-3. Phase 7 為收尾階段（測試定稿、文件定稿、GGUF 實載驗證），接手人首要任務見第 10 章。
+2. Phase 1 至 Phase 7 已全部完成：決策改用官方 laya 套件，嵌入加入 ST 替代路徑，文件定稿，版本 1.0.0。
+3. 已知限制兩項：GGUF 雙檔不相容（R-08）、ST 模型待授權接受（R-09）。管線降級路徑完整，不影響交付。
+4. 維護期首要待辦：HF 授權接受後的 ST 實測、`develop` 分支與議題標籤（見第 10 章）。
 4. 模型權重檔（約 1.1 GB）與 Ollama 模型不納入版本控制，須另行交接。規格檔名與本機實際檔名存在別名對應，已由 `src/config.py` 自動處理。
 
 ### 1.3 需接手人優先閱讀的檔案
@@ -75,7 +76,7 @@
 
 ## 3. 目前進度
 
-### 3.1 已完成（v0.2.0）
+### 3.1 已完成（v1.0.0）
 
 - [x] Phase 1：專案結構建立（`src/`、`data/`、`tests/`、`configs/`、`scripts/`、`logs/`）。
 - [x] Phase 1：`src/config.py`（YAML 載入、環境變數覆寫、模型別名、驗證）。
@@ -116,17 +117,20 @@
 - [x] Phase 6：`report/supervisor.py`（確定性督導分析）與報告模板。
 - [x] Phase 6：`scripts/generate_report.py` 與 `make report`，批量接入資源檢查。
 - [x] 版本對齊 0.7.0（套件、設定、文件一致）。
+- [x] Phase 7：決策改用官方 laya 套件（multilingual 中文驗證，穩態 15ms）。
+- [x] Phase 7：嵌入加入 sentence-transformers 替代路徑與 GGUF 架構預檢。
+- [x] Phase 7：llama-cpp Metal 安裝，GGUF 雙檔實測定位不相容根因。
+- [x] Phase 7：README 與 Makefile 定稿，版本對齊 1.0.0。
 
 ### 3.2 進行中
 
-- [ ] Phase 7：全量測試啟用（移除階段性跳過）。
-- [ ] Phase 7：README 定稿與 Makefile 定稿。
-- [ ] Phase 7：llama-cpp 安裝後的 GGUF 實載驗證。
+本專案已進入維護期，無進行中階段。日常依第 8 章排程檢視文件。
 
 ### 3.3 尚未開始
 
-- [ ] Phase 7：全量測試啟用、README 定稿、Makefile 定稿。
-- [ ] 隱私影響評估與模型授權盤點。
+- [ ] HF 授權接受後的 ST 嵌入實測（需維護者以瀏覽器接受授權）。
+- [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
+- [ ] 隱私影響評估與模型授權盤點（R-02 延續）。
 - [ ] 隱私影響評估與模型授權盤點。
 
 ---
@@ -180,6 +184,8 @@ PsyTest/
 | 2026-10-16 | 規格檔名與本機檔名以別名相容 | 本機已有 `Laya-BF16.gguf`，規格書用 `laya-421m-bf16.gguf` | `MODEL_ALIASES` 統一處理，禁止散佈兩套路徑寫法 |
 | 2026-10-16 | 以 Kokoro（sherpa-onnx，中英 103 音色，Apache-2.0）取代 Orpheus 雲端方案 | 實測 PyPI orpheus-tts 為雲端 WebSocket 客戶端，與本地端原則衝突；Kokoro 經調研與實測皆符合需求 | Orpheus 欄位保留為 guarded，選擇順序改為 kokoro→chattts→pyttsx3 |
 | 2026-10-16 | 慢想層鎖定 e4b 變體並明確寫入四份設定 | 本機已有 6.3GB 的 `:latest`（即 e4b 內容），明確指定可保證跨機器一致，`auto` 模式亦優先 e4b | 更換變體須同步修改設定、`PINNED_MODEL` 與文件 |
+| 2026-10-16 | 決策改用官方 laya 套件（multilingual）為首選後端 | 本機 Laya-BF16.gguf 為非官方轉檔，張量形狀不符；官方套件 Apache-2.0、中文驗證 0.94 置信、穩態 15ms | GGUF 路徑保留為備援，僅支援官方 ggml-org 轉檔 |
+| 2026-10-16 | 嵌入加入 ST 替代路徑，GGUF 架構預檢 | llama.cpp 尚不支援 gemma-embedding2；ST 對應同源 768 維模型 | ST 模型待授權接受後實測，在此之前相關測試明確跳過 |
 | 2026-10-16 | 督導採確定性規則而非 LLM | 督導結論須可重現、可稽核，避免以黑箱評價黑箱 | LLM 輔助解讀列為未來工作 |
 | 2026-10-16 | Phase 5 回填音訊與視覺分析器（先前階段遺漏） | 管線標註依賴兩者，無實作則數據缺聲學與視覺欄位 | 音訊採純 numpy 實作，視覺採無頭參數映射 |
 | 2026-10-16 | Phase 2 至 Phase 7 先立骨架再填實作 | 保證結構一次到位，後續迭代不重排目錄 | 骨架方法一律拋出 `NotImplementedError` 並註明階段 |
@@ -309,11 +315,13 @@ git check-ignore -v models/Laya-BF16.gguf
 |---|---|---|---|---|---|
 | R-01 | 模型檔案體積大，分發不易 | 新成員建置耗時；誤傳導致推送失敗 | 維持 `.gitignore` 排除；別名相容減少改名成本 | KiraIch | 持續追蹤 |
 | R-02 | 模型原始授權尚未完整盤點 | 散佈或商用可能侵權 | 盤點兩份 GGUF 與 Ollama 模型授權；結果記入 `NOTICE` | （待指派） | 待處理 |
-| R-03 | Phase 6 至 Phase 7 尚未實作 | 骨架方法呼叫時拋出例外 | CLI 與測試在缺件時降級為驗證或跳過；依第 10 章順序填補 | （待指派） | 待處理 |
+| R-03 | Phase 6 至 Phase 7 尚未實作 | 骨架方法呼叫時拋出例外 | CLI 與測試在缺件時降級為驗證或跳過；依第 10 章順序填補 | （待指派） | 已結案 |
 | R-04 | 心理諮商模擬涉及敏感議題 | 誤用或外流造成危害 | 禁止真實資料進 Git；危機模板設安全紅線；上線前完成法遵審查 | （待指派） | 持續追蹤 |
 | R-05 | 模擬結果不可作為臨床診斷 | 誤用可能造成危害 | 文件與未來 UI 均須載明警語；審查報告產出文案 | （待指派） | 持續追蹤 |
-| R-06 | BF16 在舊硬體或舊版 llama.cpp 可能不相容 | Laya 載入失敗 | Phase 2 實作自動轉 FP16 或提示下載 FP16 版本 | （待指派） | 待處理 |
+| R-06 | BF16 在舊硬體或舊版 llama.cpp 可能不相容 | Laya 載入失敗 | 已由 R-08 取代（實測為轉檔問題，非 BF16 問題） | （待指派） | 已結案 |
 | R-07 | 24GB 記憶體同時跑多模型吃緊 | OOM 中斷批量生成 | 按需載入與卸載；批量預設串行；溫度與記憶體監控 | （待指派） | 待處理 |
+| R-08 | 本機兩份 GGUF 與 llama.cpp 不相容 | GGUF 直載路徑不可用 | 決策改官方套件，嵌入改 ST 路徑；缺失時測試明確跳過 | KiraIch | 持續追蹤 |
+| R-09 | ST 嵌入模型待授權接受 | 嵌入向量功能未實測 | 維護者至 HF 接受授權後下載實測；管線無向量時降級運行 | （待指派） | 待處理 |
 
 新增風險時請依序編號，禁止刪除已結案風險，結案時將狀態改為「已結案」並保留紀錄。
 
@@ -329,30 +337,32 @@ git check-ignore -v models/Laya-BF16.gguf
 - [ ] 盤點兩份 GGUF 與 Ollama 模型授權，更新 `NOTICE` 與 `models/README.md` 雜湊值。
 - [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
 
-### 10.2 中優先級（Phase 3 至 Phase 5 已完成，Phase 6）
+### 10.2 中優先級（全階段已完成）
 
 - [x] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
 - [x] Phase 4：tts_engine、kokoro/chattts/pyttsx3 後端、voice_director。
 - [x] Phase 5：session_generator、output_formatter、batch_generator 與 CLI 完整實作。
-4. [ ] 補充 `.env.example` 實際使用案例。
-
-### 10.3 低優先級（Phase 6 已完成，Phase 7）
-
 - [x] Phase 6：thermal_monitor、memory_manager、supervisor、report CLI。
-- [ ] Phase 7：全量測試啟用、README 定稿、Makefile 定稿。
-3. [ ] 群體統計報表、權限管理、部署與備份策略。
+- [x] Phase 7：官方 laya 套件、ST 替代路徑、README 與 Makefile 定稿。
+
+### 10.3 維護期待辦
+
+- [ ] HF 授權接受後的 ST 嵌入實測（`backend="st"` 路徑）。
+- [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
+- [ ] llama.cpp 上游支援 gemma-embedding2 後，重新驗證 GGUF 直載。
+- [ ] 群體統計報表、權限管理、部署與備份策略（長期）。
 
 ---
 
 ## 11. 驗收標準
 
-本次交接（v0.7.0）之驗收條件如下，接手人確認後方得簽收：
+本專案（v1.0.0）已達以下驗收條件，簽收後進入維護期：
 
 1. 可依第 5 章步驟完成環境建置，驗證清單全數通過。
-2. 可說明模型檔名別名機制，以及遺失時的還原管道。
+2. 可說明模型檔名別名、GGUF 不相容根因與替代路徑。
 3. 可說明 TTS 引擎選擇順序，以及 Orpheus 為何預設停用。
-4. 可說明 Phase 6 完成範圍與 Phase 7 待辦。
-5. 已取得必要的儲存庫權限與模型檔案（或已約定取得時間）。
+4. 全測試套件通過（僅剩架構性跳過一項，原因明確）。
+5. 已取得必要的儲存庫權限與模型檔案（ST 除外，已約定取得方式）。
 
 ---
 
@@ -377,6 +387,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | 2026-10-16 | v0.5.0 | 完成 Phase 4 聲音層三引擎實測，以 Kokoro 取代 Orpheus 雲端方案 | KiraIch |
 | 2026-10-16 | v0.6.0 | 完成 Phase 5 數據管線與四支 CLI，端到端驗證通過 | KiraIch |
 | 2026-10-16 | v0.7.0 | 完成 Phase 6 輔助功能（溫度、記憶體、督導報告） | KiraIch |
+| 2026-10-16 | v1.0.0 | 完成 Phase 7：官方 laya 套件、ST 替代路徑、文件定稿，進入維護期 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---

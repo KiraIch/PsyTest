@@ -9,10 +9,10 @@
 
 規格書命名與本機實際檔名存在差異，程式會自動嘗試別名（見 `src/config.py` 的 `MODEL_ALIASES`），以下兩組視為等價。
 
-| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） | Git 狀態 |
-|---|---|---|---|---|
-| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 已排除，不提交 |
-| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | 已排除，不提交 |
+| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） | Git 狀態 | 載入狀態 |
+|---|---|---|---|---|---|
+| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 已排除，不提交 | 非官方轉檔，張量形狀不符，決策改用官方 laya 套件 |
+| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | 已排除，不提交 | llama.cpp 尚不支援 gemma-embedding2，改用 ST 後端 |
 
 ## 取得方式
 
@@ -65,6 +65,27 @@ tar -xjf ~/.cache/psytest/kokoro-multi-lang-v1_1.tar.bz2 -C ~/.cache/psytest/
 
 ChatTTS 模型由 `ChatTTS.Chat().load(source="huggingface")` 自動取得，
 存放於 HuggingFace 快取，無需手動放置。
+
+## 嵌入替代方案（sentence-transformers，需授權）
+
+`google/embeddinggemma-300m` 為授權管制模型，需兩步驟方可使用：
+
+1. 以瀏覽器登入 HuggingFace，前往
+   https://huggingface.co/google/embeddinggemma-300m 接受授權。
+2. 本機登入後下載：
+   ```bash
+   pip install sentence-transformers huggingface_hub
+   hf download google/embeddinggemma-300m
+   ```
+
+完成後以 `backend="st"` 使用：
+
+```python
+from src.perception.embedding_engine import EmbeddingEngine
+
+with EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="st") as engine:
+    vec = engine.embed_text("個案表達強烈的無助感")
+```
 
 ## 授權注意
 

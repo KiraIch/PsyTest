@@ -193,7 +193,7 @@ class AppConfig:
     """應用程式完整設定。"""
 
     project_name: str = "PsyTest"
-    project_version: str = "0.7.0"
+    project_version: str = "1.0.0"
     output_dir: str = "data/output"
     backend: BackendConfig = field(default_factory=BackendConfig)
     models: ModelsConfig = field(default_factory=ModelsConfig)
@@ -262,7 +262,7 @@ def _build_config(data: dict[str, Any]) -> AppConfig:
 
     return AppConfig(
         project_name=str(project.get("name", "PsyTest")),
-        project_version=str(project.get("version", "0.7.0")),
+        project_version=str(project.get("version", "1.0.0")),
         output_dir=str(project.get("output_dir", "data/output")),
         backend=BackendConfig(
             auto_detect=bool(backend.get("auto_detect", True)),

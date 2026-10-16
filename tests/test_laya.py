@@ -22,10 +22,40 @@ def test_load_laya() -> None:
 
 
 def test_decision_speed() -> None:
-    """確認決策延遲小於 100ms（需 llama-cpp，否則跳過）。"""
-    pytest.importorskip("llama_cpp", reason="缺少 llama-cpp-python，跳過效能測試")
-    _require_model()
-    pytest.skip("效能基準待 Phase 2 收尾量測")
+    """確認穩態決策延遲達標（暖機後應小於 2 秒，目標 50ms）。"""
+    pytest.importorskip("laya", reason="缺少官方 laya 套件，跳過效能測試")
+    from src.fast_think.laya_engine import LayaEngine
+
+    with LayaEngine() as engine:
+        assert engine.active_backend == "laya"
+        engine.should_respond("暖機。")  # 首次建模約需數秒
+        import time
+
+        started = time.perf_counter()
+        decision = engine.should_respond("諮商師：最近睡得好嗎？")
+        elapsed = time.perf_counter() - started
+        assert decision.emotion_tag in (
+            "shame", "anger", "fear", "dissociation",
+            "manic", "flat_affect", "sadness", "neutral",
+        )
+        assert elapsed < 2.0, f"決策延遲 {elapsed:.3f}s 超標"
+
+
+def test_official_backend_decisions() -> None:
+    """官方後端四種決策皆應回傳合法結構。"""
+    pytest.importorskip("laya", reason="缺少官方 laya 套件")
+    from src.fast_think.laya_engine import LayaEngine
+
+    with LayaEngine() as engine:
+        emotion = engine.determine_emotion("個案低頭沉默", "低落")
+        assert emotion.emotion in (
+            "shame", "anger", "fear", "dissociation",
+            "manic", "flat_affect", "sadness", "neutral",
+        )
+        pacing = engine.determine_pacing("諮商師：多說一點好嗎？", 3)
+        assert 0.0 <= pacing.pause_before_response <= 6.0
+        crisis = engine.assess_crisis_level("我覺得活著沒有意義")
+        assert 0 <= crisis.level <= 5
 
 
 def test_emotion_routing() -> None:
