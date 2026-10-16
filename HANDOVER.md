@@ -2,12 +2,12 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v0.3.0
+- 文件版本：v0.4.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
 - 接手人：（待填）
-- 專案狀態：Phase 2 完成，Phase 3 待啟動
+- 專案狀態：Phase 3 完成，Phase 4 待啟動
 - 下次預定檢視日期：2027-01-16（原則不超過三個月）
 
 ---
@@ -41,8 +41,8 @@
 ### 1.2 關鍵結論
 
 1. 規格書已定稿並記憶：五感層、快思層、慢想層、聲音層、數據管線，支援 Metal、CUDA、ROCm、CPU 四種後端，實作順序為 Phase 1 至 Phase 7。慢想層鎖定 e4b 變體。
-2. Phase 1 與 Phase 2 已完成：基礎設施加三大核心引擎（嵌入、決策、Ollama 客戶端）均已實作並通過驗證。
-3. Phase 3 至 Phase 7 為骨架狀態（介面與 docstring 完整，方法體拋出 `NotImplementedError`），接手人首要任務為 Phase 3 智能層（見第 10 章）。
+2. Phase 1 至 Phase 3 已完成：基礎設施、三大核心引擎、智能層四模組均已實作並通過驗證。
+3. Phase 4 至 Phase 7 為骨架狀態（介面與 docstring 完整，方法體拋出 `NotImplementedError`），接手人首要任務為 Phase 4 聲音層（見第 10 章）。
 4. 模型權重檔（約 1.1 GB）與 Ollama 模型不納入版本控制，須另行交接。規格檔名與本機實際檔名存在別名對應，已由 `src/config.py` 自動處理。
 
 ### 1.3 需接手人優先閱讀的檔案
@@ -91,13 +91,17 @@
 - [x] Phase 2：`fast_think/laya_engine.py`（四種決策、安全預設、危機保守合併、BF16 指引）。
 - [x] Phase 2：`slow_think/ollama_client.py`（連線偵測、e4b 優先匹配、串流與非串流、3 次重試）。
 - [x] 慢想層鎖定 e4b 變體，四份 `configs/*.yaml` 明確指定標籤，`detect_model` 優先 e4b。
+- [x] Phase 3：`fast_think/emotion_router.py`（八情緒映射、中英關鍵字分類、<10ms 目標）。
+- [x] Phase 3：`fast_think/rhythm_controller.py`（五狀態狀態機、Laya 節奏計畫、長沉默環境音）。
+- [x] Phase 3：`slow_think/persona_manager.py`（YAML 載入驗證、系統提示組裝、風格參數）。
+- [x] Phase 3：`slow_think/director.py`（指令解析與正規化、預設值兜底、TTS 標籤轉換）。
+- [x] 版本對齊 0.4.0（套件、設定、文件一致）。
 
 ### 3.2 進行中
 
-- [ ] Phase 3：`fast_think/emotion_router.py`（情緒映射）。
-- [ ] Phase 3：`fast_think/rhythm_controller.py`（節奏狀態機）。
-- [ ] Phase 3：`slow_think/persona_manager.py`（YAML 載入與系統提示）。
-- [ ] Phase 3：`slow_think/director.py`（導演指令解析）。
+- [ ] Phase 4：`voice/tts_engine.py`（引擎自動選擇）。
+- [ ] Phase 4：`voice/orpheus_backend.py` 或 `voice/chattts_backend.py`。
+- [ ] Phase 4：`voice/voice_director.py`（導演指令轉引擎參數）。
 
 ### 3.3 尚未開始
 
@@ -304,10 +308,10 @@ git check-ignore -v models/Laya-BF16.gguf
 - [ ] 盤點兩份 GGUF 與 Ollama 模型授權，更新 `NOTICE` 與 `models/README.md` 雜湊值。
 - [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
 
-### 10.2 中優先級（Phase 3 至 Phase 5）
+### 10.2 中優先級（Phase 3 已完成，Phase 4 至 Phase 5）
 
-1. [ ] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
-2. [ ] Phase 4：tts_engine、orpheus/chattts 後端、voice_director。
+- [x] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
+- [ ] Phase 4：tts_engine、orpheus/chattts 後端、voice_director。
 3. [ ] Phase 5：session_generator、output_formatter、batch_generator 與 CLI 完整實作。
 4. [ ] 補充 `.env.example` 實際使用案例。
 
@@ -321,12 +325,12 @@ git check-ignore -v models/Laya-BF16.gguf
 
 ## 11. 驗收標準
 
-本次交接（v0.3.0）之驗收條件如下，接手人確認後方得簽收：
+本次交接（v0.4.0）之驗收條件如下，接手人確認後方得簽收：
 
 1. 可依第 5 章步驟完成環境建置，驗證清單全數通過。
 2. 可說明模型檔名別名機制，以及遺失時的還原管道。
 3. 可說明慢想層為何鎖定 e4b 變體，以及更換變體時需同步修改哪些檔案。
-4. 可說明 Phase 2 完成範圍與 Phase 3 待辦。
+4. 可說明 Phase 3 完成範圍與 Phase 4 待辦。
 5. 已取得必要的儲存庫權限與模型檔案（或已約定取得時間）。
 
 ---
@@ -348,6 +352,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | 2026-10-16 | v0.1.0 | 初版建立，確立交接架構、進度基線、風險清單與待辦事項 | KiraIch |
 | 2026-10-16 | v0.2.0 | 納入完整開發規格書，完成 Phase 1 與全模組骨架，新增別名機制、風險 R-06、R-07 與 ADR 三筆 | KiraIch |
 | 2026-10-16 | v0.3.0 | 完成 Phase 2 三大引擎，鎖定 e4b 變體並寫入設定，測試改以真實 Ollama 驗證 | KiraIch |
+| 2026-10-16 | v0.4.0 | 完成 Phase 3 智能層四模組與 22 項測試，版本對齊 0.4.0 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---

@@ -3,12 +3,12 @@
 本套件採用「快思慢想」架構，包含五感層、快思層、慢想層、
 聲音層與數據生成管線，支援 Metal / CUDA / ROCm / CPU 四種後端。
 
-規格版本：v0.2.0（對應 HANDOVER.md）。
+規格版本：v0.4.0（對應 HANDOVER.md）。
 """
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __author__ = "KiraIch"
 __license__ = "Apache-2.0"
 

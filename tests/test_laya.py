@@ -29,8 +29,12 @@ def test_decision_speed() -> None:
 
 
 def test_emotion_routing() -> None:
-    """確認情緒路由輸出格式正確（Phase 3 實作後啟用）。"""
-    pytest.skip("EmotionRouter 排定於 Phase 3 實作")
+    """確認情緒路由輸出格式正確（Phase 3 已實作，見 test_phase3.py）。"""
+    from src.fast_think.emotion_router import EmotionRouter
+
+    route = EmotionRouter().route("我很害怕", laya_emotion="fear")
+    assert route.emotion == "fear"
+    assert route.voice_params and route.visual_params
 
 
 def test_parse_decision_output() -> None:
