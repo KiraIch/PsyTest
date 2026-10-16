@@ -112,9 +112,13 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 ### 3.1 通用步驟
 
+建議使用專用 conda 環境隔離依賴：
+
 ```bash
 git clone https://github.com/KiraIch/PsyTest.git
 cd PsyTest
+conda env create -f environment.yml
+conda activate psytest
 pip install -r requirements.txt
 python -m src.backend.detector
 python scripts/validate_setup.py

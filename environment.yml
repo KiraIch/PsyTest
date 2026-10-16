@@ -1,0 +1,15 @@
+# PsyTest conda 環境定義
+# 用法：
+#   conda env create -f environment.yml
+#   conda activate psytest
+#   # llama-cpp 需要依平台重建（見 README.md 3.2 節），例如 macOS：
+#   CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+name: psytest
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+    - -r requirements.txt

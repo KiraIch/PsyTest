@@ -112,9 +112,13 @@ This system generates simulated counseling data for clinical psychology educatio
 
 ### 3.1 General Steps
 
+Use a dedicated conda environment to isolate dependencies:
+
 ```bash
 git clone https://github.com/KiraIch/PsyTest.git
 cd PsyTest
+conda env create -f environment.yml
+conda activate psytest
 pip install -r requirements.txt
 python -m src.backend.detector
 python scripts/validate_setup.py
