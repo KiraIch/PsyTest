@@ -1,0 +1,26 @@
+# 發文行事曆
+# approved: false 的項目一律只預覽不發送。審核後改 true。
+
+- id: launch-x
+  date: '2026-10-18'
+  channel: x
+  ref: P1
+  approved: false
+
+- id: launch-threads
+  date: '2026-10-19'
+  channel: threads
+  ref: P2
+  approved: false
+
+- id: tech-x
+  date: '2026-10-22'
+  channel: x
+  ref: P3
+  approved: false
+
+- id: ethics-threads
+  date: '2026-10-23'
+  channel: threads
+  ref: P4
+  approved: false
