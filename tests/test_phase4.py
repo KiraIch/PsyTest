@@ -152,6 +152,17 @@ def test_pyttsx3_synthesize() -> None:
     assert output.audio_array.size > 0
 
 
+def test_pyttsx3_consecutive_synthesis() -> None:
+    """同一實例連續合成皆須有音訊（驅動重用缺陷回歸測試）。"""
+    pytest.importorskip("pyttsx3", reason="缺少 pyttsx3")
+    from src.voice.pyttsx3_backend import Pyttsx3Backend
+
+    engine = Pyttsx3Backend()
+    for i in range(3):
+        output = engine.synthesize(f"第{i + 1}次測試語音。", {})
+        assert output.audio_array.size > 0, f"第 {i + 1} 次合成為空"
+
+
 def test_synthesize_rejects_empty() -> None:
     """空文本應拋出 ValueError（不需模型）。"""
     from src.voice.kokoro_backend import KokoroBackend

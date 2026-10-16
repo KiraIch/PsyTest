@@ -58,7 +58,6 @@ class Pyttsx3Backend(TTSEngine):
         self.rate = rate
         self.volume = max(0.0, min(1.0, volume))
         self.sample_rate = sample_rate
-        self._engine: object | None = None
 
     def unavailable_reason(self) -> str:
         """回傳不可用原因。"""
@@ -81,10 +80,12 @@ class Pyttsx3Backend(TTSEngine):
         except Exception as exc:
             raise RuntimeError(f"取得音色清單失敗：{exc}") from exc
 
-    def _require_engine(self) -> object:
-        """建立（或回傳已快取的）pyttsx3 驅動。"""
-        if self._engine is not None:
-            return self._engine
+    def _new_engine(self) -> object:
+        """建立全新的 pyttsx3 驅動。
+
+        注意：驅動不可重用。實測 macOS nsss 驅動在首次合成後，
+        重複使用同一實例會靜默產出空音檔，因此每次合成皆重建。
+        """
         reason = self.unavailable_reason()
         if reason:
             raise RuntimeError(f"pyttsx3 不可用：{reason}")
@@ -99,8 +100,11 @@ class Pyttsx3Backend(TTSEngine):
                 engine.setProperty("voice", self.voice)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(f"音色設定失敗，使用系統預設：{exc}")
-        self._engine = engine
         return engine
+
+    def _require_engine(self) -> object:
+        """回傳驅動（僅供 get_voice_options 等一次性查詢使用）。"""
+        return self._new_engine()
 
     def _apply_tags(self, text: str, pause_ms: List[int]) -> str:
         """轉換停頓標籤：macOS 用 [[slnc]]，其餘平台移除。"""
@@ -143,7 +147,7 @@ class Pyttsx3Backend(TTSEngine):
         """
         if not text or not text.strip():
             raise ValueError("輸入文本不可為空")
-        engine = self._require_engine()
+        engine = self._new_engine()
         try:
             rate = int(director_notes.get("rate", self.rate))  # type: ignore[arg-type]
             rate = max(50, min(400, rate))
@@ -177,7 +181,10 @@ class Pyttsx3Backend(TTSEngine):
         mono = np.asarray(waveform, dtype=np.float32)
         if mono.ndim > 1:
             mono = mono.mean(axis=1).astype(np.float32)
-        resampled = self._resample(mono.ravel(), int(source_rate), self.sample_rate)
+        mono = mono.ravel()
+        if mono.size == 0:
+            raise RuntimeError("pyttsx3 回傳空音訊（驅動異常，請重試）")
+        resampled = self._resample(mono, int(source_rate), self.sample_rate)
         peak = float(np.abs(resampled).max()) if resampled.size else 0.0
         return AudioOutput(
             audio_array=resampled,

@@ -278,6 +278,41 @@ def test_silence_cap_forces_speech() -> None:
     assert decision["source"] == "rules-silence-cap"
 
 
+def test_silence_guard_allows_dissociation() -> None:
+    """解離高強度的沉默應保留，其餘情緒的沉默應轉為回應。"""
+    from types import SimpleNamespace
+
+    from src.pipeline.session_generator import SessionGenerator
+
+    class _SilentLaya:
+        def __init__(self, emotion: str, intensity: float) -> None:
+            self._emotion = emotion
+            self._intensity = intensity
+
+        def should_respond(self, context: str) -> SimpleNamespace:
+            return SimpleNamespace(should_speak=False, urgency=0.3, emotion_tag=self._emotion)
+
+        def determine_pacing(self, context: str, turn: int) -> SimpleNamespace:
+            from src.fast_think.laya_engine import PacingDecision
+
+            return PacingDecision(1.0, 1.0, False, "moderate")
+
+        def determine_emotion(self, context: str, state: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                emotion=self._emotion, intensity=self._intensity, defense_mechanism="unknown"
+            )
+
+    config = load_config("configs/default.yaml")
+    sad_gen = SessionGenerator(config, llm_client=_FakeLLM("嗨。"), laya_engine=_SilentLaya("sadness", 0.8))
+    sad = sad_gen._decide("上下文", 1, "狀態")
+    assert sad["should_speak"] is True
+    assert sad["source"] == "rules-silence-guard"
+    dis_gen = SessionGenerator(config, llm_client=_FakeLLM("嗨。"), laya_engine=_SilentLaya("dissociation", 0.8))
+    dis = dis_gen._decide("上下文", 1, "狀態")
+    assert dis["should_speak"] is False
+    assert dis["source"] == "laya"
+
+
 def test_validate_output_script(tmp_path: Path) -> None:
     """validate_output 腳本應通過合法輸出。"""
     import importlib.util

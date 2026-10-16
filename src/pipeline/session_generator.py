@@ -97,6 +97,27 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# 沉默守衛：僅以下情緒達強度時允許沉默（解離、情感平板），
+# 其餘情緒的沉默判定視為模型保守偏差，改為回應。
+_SILENCE_EMOTIONS = {"dissociation": 0.6, "flat_affect": 0.6}
+
+
+def _silence_plausible(emotion: str, intensity: float) -> bool:
+    """判斷沉默決策是否合理。
+
+    Args:
+        emotion: 情緒標籤。
+        intensity: 情緒強度。
+
+    Returns:
+        僅解離或情感平板達 0.6 強度時為 True。
+    """
+    try:
+        return float(intensity) >= _SILENCE_EMOTIONS.get(emotion, 2.0)
+    except (TypeError, ValueError):
+        return False
+
+
 class CounselorAgent:
     """模板式諮商師（AI 諮商師上線前替代）。"""
 
@@ -248,7 +269,7 @@ class SessionGenerator:
                 should = self.laya_engine.should_respond(state)  # type: ignore[union-attr]
                 pacing = self.laya_engine.determine_pacing(context, turn)  # type: ignore[union-attr]
                 emotion = self.laya_engine.determine_emotion(context, client_state)  # type: ignore[union-attr]
-                return {
+                decision = {
                     "should_speak": bool(should.should_speak),
                     "urgency": float(should.urgency),
                     "emotion": emotion.emotion,
@@ -257,6 +278,16 @@ class SessionGenerator:
                     "pacing": pacing,
                     "source": "laya",
                 }
+                if not decision["should_speak"] and not _silence_plausible(
+                    decision["emotion"], decision["intensity"]
+                ):
+                    logger.info(
+                        f"Laya 判定沉默但情緒為 {decision['emotion']}，"
+                        "未達沉默條件，改為回應（rules-silence-guard）"
+                    )
+                    decision["should_speak"] = True
+                    decision["source"] = "rules-silence-guard"
+                return decision
             except Exception as exc:  # noqa: BLE001
                 logger.warning(f"Laya 決策失敗，降級為規則決策：{exc}")
         route = self.emotion_router.route(context, client_state)
