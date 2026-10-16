@@ -87,6 +87,15 @@ with EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="st") as engine:
     vec = engine.embed_text("個案表達強烈的無助感")
 ```
 
+## 嵌入模型（Ollama，免授權首選）
+
+五感層預設經 Ollama 使用官方 `embeddinggemma-2`（768 維），無需接受 HF 授權：
+
+```bash
+ollama pull embeddinggemma-2
+ollama list
+```
+
 ## 授權注意
 
 - 使用前須確認各模型原始授權允許本專案之使用方式。

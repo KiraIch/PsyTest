@@ -74,12 +74,14 @@ def test_st_backend_missing_package(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_auto_falls_back_to_gguf(monkeypatch: pytest.MonkeyPatch) -> None:
-    """auto 模式 ST 缺失時應回退 GGUF（此處 GGUF 架構不支援故報錯）。"""
+    """auto 模式無 Ollama 且 ST 缺失時應回退 GGUF（此處架構不支援故報錯）。"""
     import sys
 
     from src.perception.embedding_engine import EmbeddingEngine
+    from src.slow_think import ollama_client
 
     monkeypatch.setitem(sys.modules, "sentence_transformers", None)
+    monkeypatch.setattr(ollama_client.OllamaClient, "list_models", lambda self: [])
     engine = EmbeddingEngine(_require_model())
     assert engine.backend == "auto"
     with pytest.raises(RuntimeError, match="尚不支援"):
@@ -121,6 +123,35 @@ def test_invalid_backend_rejected() -> None:
 
     with pytest.raises(ValueError):
         EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="不存在")
+
+
+def test_ollama_backend_real() -> None:
+    """Ollama 後端真實嵌入（無模型則跳過）。"""
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    engine = EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="ollama")
+    try:
+        engine.load()
+    except RuntimeError as exc:
+        pytest.skip(f"Ollama 嵌入未就緒：{str(exc)[:100]}")
+    assert engine.active_backend == "ollama"
+    vec = engine.embed_text("個案表達強烈的無助感")
+    assert vec.shape[0] == 768
+    engine.unload()
+
+
+def test_auto_prefers_ollama() -> None:
+    """auto 模式有 Ollama 模型時應優先使用（無則跳過）。"""
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    engine = EmbeddingEngine(_require_model())
+    assert engine.backend == "auto"
+    try:
+        engine.load()
+    except RuntimeError:
+        pytest.skip("無可用嵌入後端")
+    assert engine.active_backend == "ollama"
+    engine.unload()
 
 
 def test_embed_text_rejects_empty() -> None:

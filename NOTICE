@@ -14,6 +14,7 @@ Copyright 2026 KiraIch
 | Laya-BF16.gguf（別名 laya-421m-bf16.gguf） | 來源與授權待盤點 | 快思層決策模型 | 檔案不納入版本控制，授權確認後補充 |
 | embeddinggemma-2-Q8_0.gguf（別名 embeddinggemma2-q8.gguf） | 來源與授權待盤點 | 五感層嵌入模型 | 檔案不納入版本控制，授權確認後補充 |
 | fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive | Ollama 社群模型，授權待盤點 | 慢想層個案扮演 | 經 Ollama 取得，不納入版本控制 |
+| embeddinggemma-2 | Ollama 官方模型 | 五感層文字嵌入（768 維） | 經 Ollama 取得，不納入版本控制 |
 | llama-cpp-python | MIT | GGUF 推理 | 見 requirements.txt |
 | laya | Apache-2.0 | 官方決策套件（快思層首選） | 見 requirements.txt |
 | sentence-transformers | Apache-2.0 | ST 嵌入替代後端 | 選用，未捆綁；模型（Gemma 授權，管制）需自行接受授權取得 |

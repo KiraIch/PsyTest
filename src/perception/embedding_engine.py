@@ -1,14 +1,13 @@
-"""EmbeddingGemma 2 嵌入引擎（Phase 2 實作）。
+"""EmbeddingGemma 2 嵌入引擎（Phase 2 實作，Phase 7 加入替代後端）。
 
-經由 llama-cpp-python 以嵌入模式載入 GGUF 權重，提供文字嵌入、
-批次嵌入與餘弦相似度計算。模型採按需載入與卸載，避免與其他
-模型同時佔用記憶體。
+三後端架構（``backend`` 參數，預設 ``auto`` 依序嘗試）：
+    ollama：經 Ollama /api/embed 使用官方 embeddinggemma-2，
+        免授權，本機有模型即用（首選）。
+    st：經 sentence-transformers 載入 HF 模型（需接受授權）。
+    llama_cpp：經 llama-cpp 載入 GGUF（待上游支援 gemma-embedding2）。
 
-載入設定：
-    n_ctx=2048，embedding=True，文字前綴
-    ``task: search result | query: ``，mean pooling（由模型端處理），
-    輸出 768 維向量。n_gpu_layers 依後端自動設定
-   （Metal、CUDA、ROCm 全量 offload，CPU 為 0）。
+輸出 768 維向量，文字前綴 ``task: search result | query: ``。
+模型採按需載入與卸載，避免與其他模型同時佔用記憶體。
 
 限制說明：
     GGUF 經 llama-cpp 僅暴露文字嵌入端點，音訊與影像的語意嵌入
@@ -52,6 +51,9 @@ _ST_GATED_HINT = (
     "並於 https://huggingface.co/google/embeddinggemma-300m 接受授權，"
     "再執行 hf download google/embeddinggemma-300m（需本機 HF 登入）"
 )
+
+# Ollama 嵌入模型（官方 embeddinggemma-2，免授權，auto 首選）。
+OLLAMA_EMBED_MODEL = "embeddinggemma-2"
 
 _INSTALL_HINT = (
     "缺少 llama-cpp-python，請依 README.md 3.2 節依平台重新安裝，"
@@ -173,6 +175,8 @@ class EmbeddingEngine:
         n_batch: int = 32,
         backend: str = "auto",
         st_model: str = ST_MODEL,
+        ollama_host: Optional[str] = None,
+        ollama_model: str = OLLAMA_EMBED_MODEL,
     ) -> None:
         """初始化引擎參數（實際載入請呼叫 :meth:`load`）。
 
@@ -181,9 +185,11 @@ class EmbeddingEngine:
             n_ctx: 上下文長度。
             n_gpu_layers: GPU offload 層數設定，預設 auto。
             n_batch: 批次大小。
-            backend: ``auto``（ST 優先，失敗回退 GGUF）、``st``、
-                ``llama_cpp``。
+            backend: ``auto``（Ollama 優先，有模型即用；否則 ST；
+                再失敗回退 GGUF）、``ollama``、``st``、``llama_cpp``。
             st_model: ST 後端的 HF 模型 ID。
+            ollama_host: Ollama 位址，未指定時讀取 OLLAMA_HOST。
+            ollama_model: Ollama 嵌入模型名稱。
 
         Raises:
             ValueError: 參數非法時。
@@ -192,26 +198,35 @@ class EmbeddingEngine:
             raise ValueError("n_ctx 必須為正整數")
         if n_batch <= 0:
             raise ValueError("n_batch 必須為正整數")
-        if backend not in {"auto", "llama_cpp", "st"}:
-            raise ValueError("backend 必須為 auto、llama_cpp 或 st")
+        if backend not in {"auto", "llama_cpp", "st", "ollama"}:
+            raise ValueError("backend 必須為 auto、llama_cpp、st 或 ollama")
         self.model_path = resolve_model_path(model_path)
         self.n_ctx = n_ctx
         self.n_gpu_layers_setting = n_gpu_layers
         self.n_batch = n_batch
         self.backend = backend
         self.st_model = st_model
+        self.ollama_host = ollama_host
+        self.ollama_model = ollama_model
         self._model: Optional[object] = None
         self._st: Optional[object] = None
+        self._ollama: Optional[object] = None
         self._resolved_layers: Optional[int] = None
 
     @property
     def is_loaded(self) -> bool:
         """任一後端就緒即為已載入。"""
-        return self._model is not None or self._st is not None
+        return (
+            self._model is not None
+            or self._st is not None
+            or self._ollama is not None
+        )
 
     @property
     def active_backend(self) -> str:
-        """回傳作用中後端（llama_cpp、st 或空字串）。"""
+        """回傳作用中後端（ollama、st、llama_cpp 或空字串）。"""
+        if self._ollama is not None:
+            return "ollama"
         if self._st is not None:
             return "st"
         if self._model is not None:
@@ -231,6 +246,13 @@ class EmbeddingEngine:
         """
         if self.is_loaded:
             return self
+        if self.backend in {"auto", "ollama"}:
+            try:
+                return self._load_ollama()
+            except (ImportError, RuntimeError) as exc:
+                if self.backend == "ollama":
+                    raise
+                logger.warning(f"Ollama 嵌入不可用，改試 ST：{str(exc)[:100]}")
         if self.backend in {"auto", "st"}:
             try:
                 return self._load_st()
@@ -309,9 +331,37 @@ class EmbeddingEngine:
         logger.info("ST 嵌入模型載入完成")
         return self
 
+    def _load_ollama(self) -> "EmbeddingEngine":
+        """經 Ollama /api/embed 就緒（官方 embeddinggemma-2，免授權）。
+
+        Returns:
+            自身。
+
+        Raises:
+            ImportError: requests 缺失時（極少見）。
+            RuntimeError: Ollama 未運行或模型未拉取時（含拉取指引）。
+        """
+        from src.slow_think.ollama_client import OllamaClient
+
+        try:
+            client = OllamaClient(host=self.ollama_host)
+        except ValueError as exc:
+            raise RuntimeError(f"Ollama 客戶端建立失敗：{exc}") from exc
+        if not client.is_running():
+            raise RuntimeError(
+                "Ollama 未運行，無法使用嵌入後端。請先啟動 Ollama"
+            )
+        try:
+            model = client.detect_embedding_model(self.ollama_model)
+        except RuntimeError as exc:
+            raise RuntimeError(f"{exc}") from exc
+        self._ollama = (client, model)
+        logger.info(f"Ollama 嵌入就緒：{model}")
+        return self
+
     def unload(self) -> None:
         """卸載模型並釋放記憶體（冪等）。"""
-        if self._model is None and self._st is None:
+        if self._model is None and self._st is None and self._ollama is None:
             return
         try:
             close = getattr(self._model, "close", None)
@@ -322,6 +372,7 @@ class EmbeddingEngine:
         finally:
             self._model = None
             self._st = None
+            self._ollama = None
             self._resolved_layers = None
         logger.info("Embedding 模型已卸載")
 
@@ -335,11 +386,25 @@ class EmbeddingEngine:
 
     def _require_model(self) -> object:
         """確認模型已載入，未載入時拋出指引明確的例外。"""
+        if self._ollama is not None:
+            return self._ollama
         if self._st is not None:
             return self._st
         if self._model is None:
             raise RuntimeError("模型尚未載入，請先呼叫 load()")
         return self._model
+
+    def _embed_via_ollama(self, texts: List[str]) -> List[np.ndarray]:
+        """經 Ollama /api/embed 批次編碼（含查詢前綴）。"""
+        if self._ollama is None:
+            raise RuntimeError("模型尚未載入，請先呼叫 load()")
+        client, model = self._ollama
+        prefixed = [TEXT_PREFIX + t.strip() for t in texts]
+        try:
+            vectors = client.embed(prefixed, model=model)  # type: ignore[union-attr]
+            return [np.asarray(v, dtype=np.float32).ravel() for v in vectors]
+        except Exception as exc:
+            raise RuntimeError(f"Ollama 嵌入失敗：{exc}") from exc
 
     def _embed_via_st(self, texts: List[str]) -> List[np.ndarray]:
         """經 sentence-transformers 批次編碼（含查詢前綴）。"""
@@ -372,6 +437,14 @@ class EmbeddingEngine:
         """
         if not text or not text.strip():
             raise ValueError("輸入文字不可為空")
+        if self._ollama is not None:
+            vectors = self._embed_via_ollama([text])
+            vector = vectors[0]
+            if vector.shape[0] != EMBEDDING_DIM:
+                logger.warning(
+                    f"嵌入維度為 {vector.shape[0]}，與預期 {EMBEDDING_DIM} 不一致"
+                )
+            return vector
         if self._st is not None:
             vectors = self._embed_via_st([text])
             vector = vectors[0]
@@ -409,6 +482,8 @@ class EmbeddingEngine:
             raise ValueError("輸入清單不可為空")
         if any(not t or not t.strip() for t in texts):
             raise ValueError("輸入清單不可包含空字串")
+        if self._ollama is not None:
+            return self._embed_via_ollama(texts)
         if self._st is not None:
             return self._embed_via_st(texts)
         model = self._require_model()

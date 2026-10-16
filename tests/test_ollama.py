@@ -65,6 +65,35 @@ def test_generate_empty_prompt_raises() -> None:
         OllamaClient().generate("   ")
 
 
+def test_detect_embedding_model() -> None:
+    """確認能找到官方 embeddinggemma-2（缺失則跳過）。"""
+    if not _ollama_up():
+        pytest.skip("Ollama 未運行，跳過嵌入模型偵測測試")
+    from src.slow_think.ollama_client import OllamaClient
+
+    try:
+        model = OllamaClient().detect_embedding_model()
+    except RuntimeError as exc:
+        pytest.skip(f"無嵌入模型：{exc}")
+    assert "embeddinggemma" in model
+
+
+def test_embed_text() -> None:
+    """確認嵌入端點回傳 768 維向量（缺失則跳過）。"""
+    if not _ollama_up():
+        pytest.skip("Ollama 未運行，跳過嵌入測試")
+    from src.slow_think.ollama_client import OllamaClient
+
+    client = OllamaClient()
+    try:
+        model = client.detect_embedding_model()
+    except RuntimeError as exc:
+        pytest.skip(f"無嵌入模型：{exc}")
+    vectors = client.embed("個案表達強烈的無助感", model=model)
+    assert len(vectors) == 1
+    assert len(vectors[0]) == 768
+
+
 def test_model_keywords_cover_variants() -> None:
     """確認模糊匹配關鍵字涵蓋 e2b/e4b 命名變體。"""
     joined = " ".join(MODEL_KEYWORDS)

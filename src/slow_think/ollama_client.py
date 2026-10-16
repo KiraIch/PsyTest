@@ -363,3 +363,73 @@ class OllamaClient:
                         yield str(chunk["response"])
         except requests.RequestException as exc:
             raise RuntimeError(f"Ollama 串流生成失敗：{exc}") from exc
+
+    def detect_embedding_model(self, preference: str = "auto") -> str:
+        """偵測嵌入模型，優先官方 embeddinggemma-2。
+
+        Args:
+            preference: ``auto`` 表自動偵測，否則驗證指定名稱存在。
+
+        Returns:
+            模型完整名稱。
+
+        Raises:
+            RuntimeError: 無可用嵌入模型時（含拉取指引）。
+        """
+        available = self.list_models()
+        candidates = [name for name in available if "embeddinggemma" in name.lower()]
+        if preference != "auto":
+            if preference in available:
+                return preference
+            tagged = preference if ":" in preference else f"{preference}:latest"
+            if tagged in available:
+                return tagged
+            raise RuntimeError(
+                f"指定嵌入模型不存在：{preference}。可用模型：{available}"
+            )
+        for pinned in ("embeddinggemma-2:latest", "embeddinggemma-2"):
+            if pinned in candidates:
+                return pinned
+        if candidates:
+            logger.info(f"自動選用嵌入模型：{candidates[0]}")
+            return candidates[0]
+        raise RuntimeError(
+            "找不到嵌入模型，請執行：ollama pull embeddinggemma-2"
+        )
+
+    def embed(
+        self, texts: str | List[str], model: Optional[str] = None
+    ) -> List[List[float]]:
+        """經 /api/embed 取得嵌入向量。
+
+        Args:
+            texts: 輸入文本或清單，不可為空。
+            model: 嵌入模型名稱，未指定時自動偵測。
+
+        Returns:
+            與輸入等長的向量清單。
+
+        Raises:
+            ValueError: 輸入為空時。
+            RuntimeError: 連線失敗或回應異常時。
+        """
+        inputs = [texts] if isinstance(texts, str) else list(texts)
+        if not inputs or any(not t or not t.strip() for t in inputs):
+            raise ValueError("輸入文本不可為空")
+        target = model or self.detect_embedding_model()
+        try:
+            response = requests.post(
+                f"{self.host}/api/embed",
+                json={"model": target, "input": inputs},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Ollama 嵌入失敗：{exc}") from exc
+        except ValueError as exc:
+            raise RuntimeError(f"Ollama 嵌入回應非合法 JSON：{exc}") from exc
+        vectors = data.get("embeddings") if isinstance(data, dict) else None
+        if not isinstance(vectors, list) or len(vectors) != len(inputs):
+            raise RuntimeError("Ollama 嵌入回應格式異常")
+        return [[float(v) for v in vector] for vector in vectors]
