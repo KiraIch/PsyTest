@@ -24,17 +24,45 @@ def test_ollama_connection() -> None:
 
 
 def test_model_detection() -> None:
-    """確認能找到 Gemma 4 Uncensored 模型（Phase 2 實作後啟用）。"""
+    """確認能找到本專案鎖定的 e4b 變體。"""
     if not _ollama_up():
         pytest.skip("Ollama 未運行，跳過模型偵測測試")
-    pytest.skip("OllamaClient.detect_model 排定於 Phase 2 實作")
+    from src.slow_think.ollama_client import PINNED_MODEL, OllamaClient
+
+    detected = OllamaClient().detect_model()
+    assert detected == PINNED_MODEL
+
+
+def test_model_detection_invalid_preference() -> None:
+    """確認指定不存在的模型會拋出例外。"""
+    if not _ollama_up():
+        pytest.skip("Ollama 未運行，跳過模型偵測測試")
+    from src.slow_think.ollama_client import OllamaClient
+
+    with pytest.raises(RuntimeError):
+        OllamaClient().detect_model(preference="不存在的模型")
 
 
 def test_generate_response() -> None:
-    """確認能生成回應（Phase 2 實作後啟用）。"""
+    """確認能生成回應（短 token smoke test）。"""
     if not _ollama_up():
         pytest.skip("Ollama 未運行，跳過生成測試")
-    pytest.skip("OllamaClient.generate 排定於 Phase 2 實作")
+    from src.slow_think.ollama_client import GenerateOptions, OllamaClient
+
+    result = OllamaClient(timeout=180).generate(
+        "用一句話描述下雨的感覺。",
+        options=GenerateOptions(max_tokens=128, temperature=0.7),
+    )
+    assert result["text"].strip()
+    assert result["model"]
+
+
+def test_generate_empty_prompt_raises() -> None:
+    """確認空提示會拋出 ValueError（不需連線）。"""
+    from src.slow_think.ollama_client import OllamaClient
+
+    with pytest.raises(ValueError):
+        OllamaClient().generate("   ")
 
 
 def test_model_keywords_cover_variants() -> None:

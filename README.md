@@ -4,9 +4,9 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v0.2.0
+- 文件版本：v0.3.0
 - 最後更新：2026-10-16
-- 專案狀態：Phase 1 完成（基礎設施），Phase 2 進行中。詳細進度見 `HANDOVER.md`。
+- 專案狀態：Phase 2 完成（核心引擎），Phase 3 待啟動。詳細進度見 `HANDOVER.md`。
 
 ---
 
@@ -195,7 +195,9 @@ ollama list
 
 ### 5.3 模型名稱偵測
 
-系統會自動掃描已安裝模型，模糊匹配包含 `gemma`、`uncensored`、`hauhau`、`aggressive` 任一關鍵字的模型，支援 e2b 與 e4b 變體。若找不到，將回退至其他可用的 4B 以上模型。也可在設定檔或環境變數 `OLLAMA_MODEL` 明確指定。
+系統會自動掃描已安裝模型，模糊匹配包含 `gemma`、`uncensored`、`hauhau`、`aggressive` 任一關鍵字的模型，支援 e2b 與 e4b 變體，優先順序為 e4b 明確標籤、本專案鎖定標籤、e2b。若找不到，將回退至其他可用的 4B 以上模型。
+
+本專案已鎖定 e4b 變體（`fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive:latest`，6.3GB），四份 `configs/*.yaml` 均已明確指定。也可在設定檔改回 `auto` 使用自動偵測，或以環境變數 `OLLAMA_MODEL` 覆寫。
 
 ---
 
@@ -350,6 +352,7 @@ pytest tests/ -v
 |---|---|---|---|
 | 2026-10-16 | v0.1.0 | 初版建立，確立文件結構與維護規範 | KiraIch |
 | 2026-10-16 | v0.2.0 | 納入完整開發規格書，完成 Phase 1（基礎設施）與全模組骨架，對應快思慢想架構 | KiraIch |
+| 2026-10-16 | v0.3.0 | 完成 Phase 2（嵌入引擎、決策引擎、Ollama 客戶端），鎖定 e4b 變體 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2 核心引擎 | （待填） |
 
 ---

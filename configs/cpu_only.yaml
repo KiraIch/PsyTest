@@ -28,7 +28,8 @@ models:
 
   llm:
     provider: "ollama"
-    model_name: "auto"
+    # 鎖定 e4b 變體（見 default.yaml 註解）。
+    model_name: "fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive:latest"
     host: "http://localhost:11434"
     temperature: 0.9
     top_p: 0.9

@@ -48,12 +48,28 @@ def test_load_embedding_model() -> None:
 
 
 def test_embed_text() -> None:
-    """確認文字嵌入輸出維度正確（Phase 2 實作後啟用）。"""
-    _require_model()
-    pytest.skip("EmbeddingEngine.embed_text 排定於 Phase 2 實作")
+    """確認文字嵌入輸出維度正確（需 llama-cpp，否則跳過）。"""
+    pytest.importorskip("llama_cpp", reason="缺少 llama-cpp-python，跳過需權重的測試")
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    with EmbeddingEngine(_require_model()) as engine:
+        vec = engine.embed_text("個案表達強烈的無助感")
+    assert vec.shape[0] == EMBEDDING_DIM
+
+
+def test_embed_text_rejects_empty() -> None:
+    """確認空輸入在模型載入前即被拒絕（不需模型）。"""
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    engine = EmbeddingEngine.__new__(EmbeddingEngine)
+    with pytest.raises(ValueError):
+        engine.embed_text("   ")
 
 
 def test_embed_audio() -> None:
-    """確認音訊嵌入功能正常（Phase 2 實作後啟用）。"""
-    _require_model()
-    pytest.skip("EmbeddingEngine.embed_audio 排定於 Phase 2 實作")
+    """確認音訊嵌入明確拋出例外而非回傳偽造向量（不需模型）。"""
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    engine = EmbeddingEngine.__new__(EmbeddingEngine)
+    with pytest.raises(RuntimeError):
+        engine.embed_audio(np.zeros(16000, dtype=np.float32), 16000)

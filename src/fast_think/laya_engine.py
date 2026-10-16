@@ -1,14 +1,64 @@
-"""Laya 421M 決策引擎（骨架，Phase 2 實作）。
+"""Laya 421M 決策引擎（Phase 2 實作）。
 
-Laya 為非自回歸決策模型，輸入為問題加選項，輸出為決策結果。
-載入設定：n_ctx=512，temperature=0.0（greedy decoding）。
-BF16 在不支援的硬體上需轉換為 FP16（Phase 2 處理）。
+載入 ``models/laya-421m-bf16.gguf`` 並提供四種極速決策：
+是否回應、情緒判定、節奏決定、危機評估。單次推理目標 <50ms，
+一律使用 greedy decoding（temperature=0.0）以保證決策確定性。
+
+設計原則：
+    1. 模型輸出解析失敗時一律退回安全預設值，絕不拋出例外中斷管線。
+    2. 危機評估採「模型判斷 union 關鍵字掃描」，寧可高估不可低估。
+    3. BF16 載入失敗時提供明確的 FP16 指引。
+
+使用範例：
+    from src.fast_think.laya_engine import LayaEngine
+
+    engine = LayaEngine("models/laya-421m-bf16.gguf")
+    engine.load()
+    try:
+        decision = engine.should_respond("諮商師：最近睡得好嗎？")
+    finally:
+        engine.unload()
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import List
+from pathlib import Path
+from typing import List, Optional, Union
+
+from src.config import resolve_model_path
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+_INSTALL_HINT = (
+    "缺少 llama-cpp-python，請依 README.md 3.2 節依平台重新安裝，"
+    "例如 macOS："
+    'CMAKE_ARGS="-DGGML_METAL=on" '
+    "pip install llama-cpp-python --force-reinstall --no-cache-dir"
+)
+
+VALID_EMOTIONS = (
+    "shame",
+    "anger",
+    "fear",
+    "dissociation",
+    "manic",
+    "flat_affect",
+    "sadness",
+    "neutral",
+)
+
+VALID_LENGTH_HINTS = ("brief", "moderate", "detailed")
+
+# 危機關鍵字：出現即至少為對應等級（保守原則）。
+_CRISIS_KEYWORDS: dict[int, tuple[str, ...]] = {
+    5: ("自殺", "想死", "結束生命", "suicide", "kill myself"),
+    4: ("自傷", "自殘", "割腕", "self-harm", "self harm"),
+    3: ("活著沒意義", "不想活", "沒有希望", "絕望"),
+    2: ("撐不下去", "好痛苦", "想哭", "睡不著"),
+}
 
 
 @dataclass(frozen=True)
@@ -47,40 +97,335 @@ class CrisisAssessment:
     triggers: List[str] = field(default_factory=list)
 
 
+def parse_decision_output(text: str) -> DecisionResult:
+    """解析是否回應決策輸出，失敗時回傳安全預設（回應、中等緊急）。
+
+    Args:
+        text: 模型原始輸出。
+
+    Returns:
+        解析後的 :class:`DecisionResult`。
+    """
+    normalized = text.strip().lower()
+    should_speak = not re.search(r"\b(no|否|不回應|沉默|silence)\b", normalized)
+    urgency_match = re.search(r"(urgency|緊急)[^\d]*(\d(?:\.\d+)?)", normalized)
+    try:
+        urgency = float(urgency_match.group(2)) if urgency_match else 0.5
+    except (ValueError, IndexError):
+        urgency = 0.5
+    urgency = max(0.0, min(1.0, urgency))
+    emotion_tag = "neutral"
+    for emotion in VALID_EMOTIONS:
+        if emotion in normalized:
+            emotion_tag = emotion
+            break
+    return DecisionResult(should_speak=should_speak, urgency=urgency, emotion_tag=emotion_tag)
+
+
+def parse_emotion_output(text: str) -> EmotionDecision:
+    """解析情緒決策輸出，失敗時回傳中性預設。
+
+    Args:
+        text: 模型原始輸出。
+
+    Returns:
+        解析後的 :class:`EmotionDecision`。
+    """
+    normalized = text.strip().lower()
+    emotion = "neutral"
+    for candidate in VALID_EMOTIONS:
+        if candidate in normalized:
+            emotion = candidate
+            break
+    intensity_match = re.search(r"(intensity|強度)[^\d]*(\d(?:\.\d+)?)", normalized)
+    try:
+        intensity = float(intensity_match.group(2)) if intensity_match else 0.5
+    except (ValueError, IndexError):
+        intensity = 0.5
+    intensity = max(0.0, min(1.0, intensity))
+    defense_match = re.search(r"(defense|防衛)[：:\s]*([a-z_]+)", normalized)
+    defense = defense_match.group(2) if defense_match else "unknown"
+    return EmotionDecision(emotion=emotion, intensity=intensity, defense_mechanism=defense)
+
+
+def parse_pacing_output(text: str) -> PacingDecision:
+    """解析節奏決策輸出，失敗時回傳溫和預設。
+
+    Args:
+        text: 模型原始輸出。
+
+    Returns:
+        解析後的 :class:`PacingDecision`。
+    """
+    normalized = text.strip().lower()
+    pause_match = re.search(r"(pause|停頓)[^\d]*(\d(?:\.\d+)?)", normalized)
+    try:
+        pause = float(pause_match.group(2)) if pause_match else 1.0
+    except (ValueError, IndexError):
+        pause = 1.0
+    pause = max(0.0, min(30.0, pause))
+    speed_match = re.search(r"(speed|語速)[^\d]*(\d(?:\.\d+)?)", normalized)
+    try:
+        speed = float(speed_match.group(2)) if speed_match else 1.0
+    except (ValueError, IndexError):
+        speed = 1.0
+    speed = max(0.5, min(2.0, speed))
+    should_interrupt = bool(
+        re.search(r"(interrupt|打斷|搶話)[^\n]*?(yes|true|是|true)", normalized)
+    ) and not re.search(r"(no.?interrupt|不打斷|no|false)", normalized)
+    length_hint = "moderate"
+    for hint in VALID_LENGTH_HINTS:
+        if hint in normalized:
+            length_hint = hint
+            break
+    if "簡短" in text or "简短" in text:
+        length_hint = "brief"
+    elif "詳細" in text or "详细" in text:
+        length_hint = "detailed"
+    return PacingDecision(
+        pause_before_response=pause,
+        speech_speed=speed,
+        should_interrupt=should_interrupt,
+        response_length_hint=length_hint,
+    )
+
+
+def keyword_crisis_scan(text: str) -> CrisisAssessment:
+    """關鍵字危機掃描（不依賴模型，保守原則）。
+
+    Args:
+        text: 待評估文本。
+
+    Returns:
+        掃描結果，等級為命中關鍵字的最高等級。
+    """
+    level = 0
+    triggers: List[str] = []
+    for candidate_level in sorted(_CRISIS_KEYWORDS, reverse=True):
+        for keyword in _CRISIS_KEYWORDS[candidate_level]:
+            if keyword.lower() in text.lower():
+                if candidate_level > level:
+                    level = candidate_level
+                triggers.append(keyword)
+    return CrisisAssessment(level=level, triggers=triggers)
+
+
+def parse_crisis_output(text: str, source_text: str = "") -> CrisisAssessment:
+    """合併模型輸出與關鍵字掃描，取較高者（寧可高估）。
+
+    Args:
+        text: 模型原始輸出。
+        source_text: 原始對白文本，用於關鍵字掃描。
+
+    Returns:
+        保守合併後的 :class:`CrisisAssessment`。
+    """
+    level_match = re.search(r"(level|等級)[^\d]*([0-5])", text.strip().lower())
+    try:
+        model_level = int(level_match.group(2)) if level_match else 0
+    except (ValueError, IndexError):
+        model_level = 0
+    scanned = keyword_crisis_scan(source_text or text)
+    final_level = max(model_level, scanned.level)
+    triggers = list(scanned.triggers)
+    trigger_match = re.findall(r"(trigger|觸發)[：:\s]*([^\n,，]+)", text)
+    triggers.extend(t.strip() for _, t in trigger_match if t.strip())
+    return CrisisAssessment(level=final_level, triggers=triggers)
+
+
 class LayaEngine:
-    """Laya 421M 載入與推理（Phase 2 實作）。"""
+    """Laya 421M 載入與推理。"""
 
     def __init__(
         self,
-        model_path: str,
+        model_path: Union[str, Path],
         n_ctx: int = 512,
-        n_gpu_layers: int = -1,
+        n_gpu_layers: Union[str, int, None] = "auto",
     ) -> None:
-        """初始化引擎參數。
+        """初始化引擎參數（實際載入請呼叫 :meth:`load`）。
 
         Args:
-            model_path: GGUF 權重路徑。
+            model_path: GGUF 權重路徑（支援規格別名）。
             n_ctx: 上下文長度。
-            n_gpu_layers: GPU offload 層數。
+            n_gpu_layers: GPU offload 層數設定，預設 auto。
+
+        Raises:
+            ValueError: 參數非法時。
         """
-        self.model_path = model_path
+        if n_ctx <= 0:
+            raise ValueError("n_ctx 必須為正整數")
+        self.model_path = resolve_model_path(model_path)
         self.n_ctx = n_ctx
-        self.n_gpu_layers = n_gpu_layers
+        self.n_gpu_layers_setting = n_gpu_layers
+        self._model: Optional[object] = None
+
+    @property
+    def is_loaded(self) -> bool:
+        """模型是否已載入。"""
+        return self._model is not None
+
+    def load(self) -> "LayaEngine":
+        """載入模型（冪等）。
+
+        Returns:
+            自身，支援鏈式呼叫。
+
+        Raises:
+            ImportError: 未安裝 llama-cpp-python 時。
+            FileNotFoundError: 權重檔不存在時。
+            RuntimeError: 載入失敗時（含 BF16 指引）。
+        """
+        if self._model is not None:
+            return self
+        try:
+            from llama_cpp import Llama
+        except ImportError as exc:
+            raise ImportError(_INSTALL_HINT) from exc
+        if not self.model_path.exists():
+            raise FileNotFoundError(
+                f"找不到 Laya 模型檔：{self.model_path}，"
+                "請依 models/README.md 取得檔案"
+            )
+        from src.perception.embedding_engine import _resolve_gpu_layers
+
+        layers = _resolve_gpu_layers(self.n_gpu_layers_setting)
+        logger.info(f"載入 Laya 模型：{self.model_path}（GPU 層數={layers}）")
+        try:
+            self._model = Llama(
+                model_path=str(self.model_path),
+                n_ctx=self.n_ctx,
+                n_gpu_layers=layers,
+                verbose=False,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Laya 模型載入失敗：{exc}。"
+                "BF16 格式在舊版 llama.cpp 或舊硬體上可能不支援，"
+                "請升級 llama-cpp-python 至最新版，或改用 FP16 量化版本"
+            ) from exc
+        logger.info("Laya 模型載入完成")
+        return self
+
+    def unload(self) -> None:
+        """卸載模型並釋放記憶體（冪等）。"""
+        if self._model is None:
+            return
+        try:
+            close = getattr(self._model, "close", None)
+            if callable(close):
+                close()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"模型卸載時發生非致命錯誤：{exc}")
+        finally:
+            self._model = None
+        logger.info("Laya 模型已卸載")
+
+    def __enter__(self) -> "LayaEngine":
+        """支援 with 語句自動載入。"""
+        return self.load()
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        """離開 with 區塊時自動卸載。"""
+        self.unload()
+
+    def _complete(self, prompt: str, max_tokens: int = 64) -> str:
+        """執行 greedy completion 並回傳文本。
+
+        Args:
+            prompt: 決策提示。
+            max_tokens: 最大生成 token 數。
+
+        Returns:
+            模型輸出文本（失敗時回傳空字串，由呼叫方退回預設）。
+        """
+        if self._model is None:
+            raise RuntimeError("模型尚未載入，請先呼叫 load()")
+        try:
+            result = self._model.create_completion(  # type: ignore[union-attr]
+                prompt,
+                max_tokens=max_tokens,
+                temperature=0.0,
+                top_p=1.0,
+                stop=["\n\n"],
+            )
+            return str(result["choices"][0]["text"])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Laya 推理失敗，使用安全預設：{exc}")
+            return ""
 
     def should_respond(self, context: str) -> DecisionResult:
-        """判斷是否需要虛擬個案回應（Phase 2 實作）。"""
-        raise NotImplementedError("LayaEngine.should_respond 排定於 Phase 2 實作")
+        """判斷當前情境是否需要虛擬個案回應。
+
+        Args:
+            context: 當前對話上下文摘要。
+
+        Returns:
+            :class:`DecisionResult`，推理失敗時退回安全預設。
+        """
+        if not context or not context.strip():
+            raise ValueError("context 不可為空")
+        prompt = (
+            "Decide if the client should speak now. "
+            "Reply with YES or NO, urgency 0-1, and one emotion tag.\n"
+            f"Context: {context.strip()[:400]}\nAnswer:"
+        )
+        return parse_decision_output(self._complete(prompt))
 
     def determine_emotion(self, context: str, client_state: str) -> EmotionDecision:
-        """判斷個案情緒反應（Phase 2 實作）。"""
-        raise NotImplementedError("LayaEngine.determine_emotion 排定於 Phase 2 實作")
+        """判斷個案的情緒反應。
+
+        Args:
+            context: 對話上下文。
+            client_state: 個案當前狀態描述。
+
+        Returns:
+            :class:`EmotionDecision`，推理失敗時退回中性預設。
+        """
+        if not context or not context.strip():
+            raise ValueError("context 不可為空")
+        prompt = (
+            "Classify the client's emotion. Choose one: "
+            + ", ".join(VALID_EMOTIONS)
+            + ". Reply with emotion, intensity 0-1, defense mechanism.\n"
+            f"Context: {context.strip()[:400]}\nState: {client_state.strip()[:200]}\nAnswer:"
+        )
+        return parse_emotion_output(self._complete(prompt))
 
     def determine_pacing(self, context: str, conversation_turn: int) -> PacingDecision:
-        """決定對話節奏（Phase 2 實作）。"""
-        raise NotImplementedError("LayaEngine.determine_pacing 排定於 Phase 2 實作")
+        """決定對話節奏。
+
+        Args:
+            context: 對話上下文。
+            conversation_turn: 當前輪次（必須為正整數）。
+
+        Returns:
+            :class:`PacingDecision`，推理失敗時退回溫和預設。
+        """
+        if not context or not context.strip():
+            raise ValueError("context 不可為空")
+        if conversation_turn <= 0:
+            raise ValueError("conversation_turn 必須為正整數")
+        prompt = (
+            "Decide pacing: pause seconds 0-30, speed 0.5-2.0, "
+            "interrupt YES/NO, length brief/moderate/detailed.\n"
+            f"Turn {conversation_turn}. Context: {context.strip()[:400]}\nAnswer:"
+        )
+        return parse_pacing_output(self._complete(prompt, max_tokens=96))
 
     def assess_crisis_level(self, response_text: str) -> CrisisAssessment:
-        """評估危機等級 0-5（Phase 2 實作）。"""
-        raise NotImplementedError(
-            "LayaEngine.assess_crisis_level 排定於 Phase 2 實作"
+        """評估危機等級 0-5（模型判斷 union 關鍵字掃描）。
+
+        Args:
+            response_text: 個案回應文本。
+
+        Returns:
+            :class:`CrisisAssessment`，採保守合併，寧可高估。
+        """
+        if not response_text or not response_text.strip():
+            raise ValueError("response_text 不可為空")
+        prompt = (
+            "Rate crisis level 0-5 (0 safe, 5 imminent suicide risk). "
+            "Reply with level and triggers.\n"
+            f"Response: {response_text.strip()[:500]}\nAnswer:"
         )
+        return parse_crisis_output(self._complete(prompt), source_text=response_text)

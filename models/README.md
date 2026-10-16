@@ -36,12 +36,20 @@ shasum -a 256 models/embeddinggemma-2-Q8_0.gguf
 
 ## 慢想層模型（Ollama）
 
-慢想層使用 Ollama 管理的 `fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive`（e2b 或 e4b 變體），不存放於本目錄。拉取方式：
+慢想層使用 Ollama 管理的 e4b 變體，本專案已鎖定以下標籤
+（本機 `:latest` 即 e4b 內容，6.3GB，已驗證存在）：
 
 ```bash
 ollama pull fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive
 ollama list
 ```
+
+- 鎖定標籤：`fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive:latest`
+- 對應變體：e4b（4B 參數，128K context，支援文字與影像）。
+- 四份 `configs/*.yaml` 的 `llm.model_name` 均已明確指定該標籤；
+  `OllamaClient.detect_model` 在 `auto` 模式下亦優先選擇 e4b。
+- 如需更換變體（例如改用 e2b 節省記憶體），請同步修改四份設定、
+  `PINNED_MODEL` 常數與本節說明，並記錄於 `HANDOVER.md` 第 13 章。
 
 ## 授權注意
 

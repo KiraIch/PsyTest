@@ -30,7 +30,9 @@ models:
 
   llm:
     provider: "ollama"
-    model_name: "auto"  # 自動偵測 Gemma 4 Uncensored
+    # 本專案鎖定 e4b 變體（本機 :latest 即 e4b 內容，6.3GB，已驗證存在）。
+    # 設為 auto 亦可自動偵測，但明確指定可保證跨機器一致。
+    model_name: "fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive:latest"
     host: "http://localhost:11434"
     temperature: 0.9
     top_p: 0.9
