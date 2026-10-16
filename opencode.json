@@ -14,12 +14,25 @@
     "gemini-super": {
       "provider": "opencode-go",
       "model": "gemini-4-argon-contributor",
-      "effort": "high",
+      "effort": "medium",
       "temperature": 0.3,
       "max_tokens": 8192,
       "role": "supervisor",
       "description": "高級顧問模型：負責架構規劃、複雜除錯與代碼審查"
     }
+  },
+
+  "subagents": {
+    "default_model": "muse-main",
+    "allowed_models": ["muse-main"],
+    "effort": "high",
+    "effort_allowlist": ["high", "xhigh"],
+    "fallback": "high",
+    "rules": [
+      "所有 subagent 一律使用 Muse Spark 1.3 Contributor（即 muse-main），禁止改用其他模型。",
+      "effort 僅允許 high 或 xhigh，預設 high，複雜任務使用 xhigh。",
+      "如需例外，必須經使用者明確指示，並記錄於 HANDOVER.md 第 13 章。"
+    ]
   },
 
   "agent": {
