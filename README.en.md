@@ -10,7 +10,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.1.2
+- Document version: v1.2.0
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -81,7 +81,7 @@ This system generates simulated counseling data for clinical psychology educatio
 | Perception | `src/perception/` | Ollama embeddinggemma-2 (license-free default) | Text embeddings and audio/visual feature analysis; ST and GGUF as fallbacks |
 | Fast thinking | `src/fast_think/` | Official laya package (multilingual) | Dialogue rhythm control, emotion routing, crisis assessment; GGUF as fallback only |
 | Slow thinking | `src/slow_think/` | Gemma 4 Uncensored (Ollama) | Virtual client role-play, persona management, director notes |
-| Voice | `src/voice/` | Kokoro (sherpa-onnx), ChatTTS, pyttsx3 | Emotional speech synthesis; Orpheus disabled by default |
+| Voice | `src/voice/` | ChatTTS (expressive default), Kokoro, pyttsx3 | Emotional speech synthesis; stage directions never spoken; Orpheus disabled by default |
 | Data pipeline | `src/pipeline/` | None (integration layer) | Single-session generation, batch scheduling, JSONL output |
 | Backend | `src/backend/` | None | Automatic Metal, CUDA, ROCm, and CPU detection |
 | Supervision report | `src/report/` | None (deterministic rules) | AI supervision analysis and Markdown reports |
@@ -336,7 +336,7 @@ Do not load all models at once. The system loads on demand and generates seriall
 
 ### Q8: How do I choose and install a speech engine?
 
-Selection order is Kokoro, ChatTTS, then pyttsx3; Orpheus is disabled by default. pyttsx3 ships with the main dependencies for basic speech. Kokoro additionally needs `sherpa-onnx` plus its model download (approx. 350 MB; commands in `models/README.md`). ChatTTS needs a separate install (AGPLv3+ licensed; first load downloads several GB from HF). Missing engines report clear errors instead of failing silently.
+Selection order is ChatTTS (most expressive, slower on CPU), Kokoro (lightweight real-time), then pyttsx3 (fallback); Orpheus is disabled by default. pyttsx3 ships with the main dependencies for basic speech. Kokoro additionally needs `sherpa-onnx` plus its model download (approx. 350 MB; commands in `models/README.md`). ChatTTS needs a separate install (AGPLv3+ licensed; first load downloads several GB from HF). Missing engines report clear errors instead of failing silently.
 
 ---
 
@@ -384,6 +384,7 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v1.1.0 | Expanded to 9 personas (2 comorbid); added conversational style, resistance, and memory anchor fields | KiraIch |
 | 2026-10-16 | v1.1.1 | Embeddings default to ST-first with automatic fallback; pipeline wires the embedding engine | KiraIch |
 | 2026-10-16 | v1.1.2 | Embeddings via official Ollama embeddinggemma-2 (license-free, 768 dims verified) | KiraIch |
+| 2026-10-16 | v1.2.0 | Stage directions no longer spoken; ChatTTS-first selection; vocal affect and trigger similarity feed decisions | KiraIch |
 
 ---
 

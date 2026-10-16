@@ -313,6 +313,34 @@ def test_silence_guard_allows_dissociation() -> None:
     assert dis["source"] == "laya"
 
 
+def test_vocal_description_bands() -> None:
+    """聲學描述分段應正確，無資料回傳空字串。"""
+    from src.pipeline.session_generator import describe_vocal
+
+    assert describe_vocal(None) == ""
+    assert describe_vocal({}) == ""
+    desc = describe_vocal({"energy": 0.4, "pitch_mean": 250.0, "speech_rate": 4.0})
+    assert "能量高" in desc and "音調高" in desc and "語速快" in desc
+    desc = describe_vocal({"energy": 0.05, "pitch_mean": 120.0, "speech_rate": 1.0})
+    assert "能量低" in desc and "音調低" in desc and "語速慢" in desc
+
+
+def test_trigger_match_similarity() -> None:
+    """觸發主題相似度比對（以固定向量偽裝嵌入引擎）。"""
+    from src.pipeline.session_generator import SessionGenerator, _cosine
+
+    assert _cosine([1.0, 0.0], [1.0, 0.0]) == 1.0
+    assert _cosine([1.0, 0.0], [0.0, 1.0]) == 0.0
+    assert _cosine([1.0], [1.0, 0.0]) == 0.0
+    config = load_config("configs/default.yaml")
+    generator = SessionGenerator(config, llm_client=_FakeLLM("嗨。"))
+    generator._embed = lambda text: [1.0, 0.0]  # type: ignore[method-assign]
+    hit = generator._match_trigger("任何話", {"母親": [1.0, 0.0], "工作": [0.0, 1.0]})
+    assert hit == "母親"
+    generator._embed = lambda text: None  # type: ignore[method-assign]
+    assert generator._match_trigger("任何話", {"母親": [1.0, 0.0]}) == ""
+
+
 def test_validate_output_script(tmp_path: Path) -> None:
     """validate_output 腳本應通過合法輸出。"""
     import importlib.util

@@ -2,7 +2,7 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v1.1.2
+- 文件版本：v1.2.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
@@ -122,6 +122,8 @@
 - [x] Phase 7：llama-cpp Metal 安裝，GGUF 雙檔實測定位不相容根因。
 - [x] Phase 7：README 與 Makefile 定稿，版本對齊 1.0.0。
 - [x] 個案擴充至 9 位（含 2 共病），Persona 新增風格、抗拒、錨點欄位。
+- [x] 嵌入改走 Ollama embeddinggemma-2，ST 優先改自動三層回退。
+- [x] TTS 舞台指示過濾、ChatTTS 優先、語音情緒與觸發相似度回饋決策。
 
 ### 3.2 進行中
 
@@ -396,6 +398,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | 2026-10-16 | v1.1.0 | 個案擴充至 9 位（含 2 共病），Persona 新增風格、抗拒、錨點欄位 | KiraIch |
 | 2026-10-16 | v1.1.1 | 嵌入預設 ST 優先自動回退，管線自動接線；psytest 環境補齊三 TTS 依賴 | KiraIch |
 | 2026-10-16 | v1.1.2 | 嵌入改走 Ollama 官方 embeddinggemma-2（免授權，Ollama 升級至 0.40.5） | KiraIch |
+| 2026-10-16 | v1.2.0 | 舞台指示過濾、ChatTTS 優先、語音情緒與觸發相似度回饋決策 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---

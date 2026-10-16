@@ -1,6 +1,6 @@
 [project]
 name = "psytest"
-version = "1.1.2"
+version = "1.2.0"
 description = "本地端多模態心理諮商模擬數據生成系統"
 readme = "README.md"
 license = { text = "Apache-2.0" }

@@ -24,7 +24,7 @@ from typing import Dict, List
 import numpy as np
 
 from src.utils.logger import get_logger
-from src.voice.tts_engine import AudioOutput, TTSEngine, parse_inline_tags
+from src.voice.tts_engine import AudioOutput, TTSEngine, parse_inline_tags, strip_stage_directions
 
 logger = get_logger(__name__)
 
@@ -114,8 +114,8 @@ class ChatTTSBackend(TTSEngine):
         return self._chat
 
     def _adapt_text(self, text: str) -> str:
-        """轉換 <tag> 為 ChatTTS 原生標籤並移除無對應者。"""
-        adapted = text
+        """轉換 <tag> 為 ChatTTS 原生標籤並移除無對應者與舞台指示。"""
+        adapted = strip_stage_directions(text)
         for angle, bracket in _ANGLE_TO_BRACKET.items():
             adapted = adapted.replace(f"<{angle}>", f" {bracket} ")
             adapted = adapted.replace(f"<{angle.upper()}>", f" {bracket} ")

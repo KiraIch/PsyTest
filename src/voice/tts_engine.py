@@ -1,8 +1,9 @@
 """TTS 抽象層（Phase 4 實作）。
 
-引擎選擇順序（本地優先、輕量優先）：
-    kokoro → chattts → pyttsx3。
-Orpheus 僅在明確指定且已配置雲端端點時使用，
+引擎選擇順序（情感優先、輕量次之）：
+    chattts → kokoro → pyttsx3。
+ChatTTS 情感韻律最佳但 CPU 較慢；Kokoro 輕量即時但語調平穩；
+pyttsx3 為系統語音保底。Orpheus 僅在明確指定且已配置雲端端點時使用，
 不參與自動選擇（詳見 ``orpheus_backend.py``）。
 
 導演行內標籤（兩種寫法皆接受，合成前由各後端轉換或移除）：
@@ -33,8 +34,13 @@ INLINE_TAGS = ("hesitate", "cry", "whisper", "angry", "flat", "breath")
 _INLINE_TAG_RE = re.compile(r"<(hesitate|cry|whisper|angry|flat|breath)>", re.IGNORECASE)
 _BRACKET_TAG_RE = re.compile(r"\[(hesitate|cry|whisper|angry|flat|breath)\]", re.IGNORECASE)
 
+# 舞台指示（動作與表情描述）不可念出，合成前移除。
+# 注意：僅移除整段括號，括號內的導演標籤已先由標籤解析處理。
+_STAGE_FULLWIDTH_RE = re.compile(r"（[^（）]*）")
+_STAGE_ASCII_RE = re.compile(r"\([^()]*\)")
+
 # 自動選擇順序（Orpheus 排除在外，見模組 docstring）。
-ENGINE_ORDER = ("kokoro", "chattts", "pyttsx3")
+ENGINE_ORDER = ("chattts", "kokoro", "pyttsx3")
 
 
 @dataclass
@@ -116,6 +122,24 @@ def strip_inline_tags(text: str) -> str:
     """移除行內導演標籤，僅回傳乾淨文本。"""
     clean, _ = parse_inline_tags(text)
     return clean
+
+
+def strip_stage_directions(text: str) -> str:
+    """移除舞台指示（中英文括號段落），保留對白。
+
+    LLM 常在對白中夾帶動作與表情描述（例如「（低頭）你好」），
+    這些不可送入 TTS。JSONL 原文保留完整，僅合成用清理版。
+
+    Args:
+        text: 含舞台指示的對白。
+
+    Returns:
+        移除括號段落並整理空白後的文本。
+    """
+    clean, _ = parse_inline_tags(text)
+    clean = _STAGE_FULLWIDTH_RE.sub("", clean)
+    clean = _STAGE_ASCII_RE.sub("", clean)
+    return re.sub(r"[ \t]{2,}", " ", clean).strip()
 
 
 def _build_engine(name: str, sample_rate: int, **kwargs: object) -> TTSEngine:

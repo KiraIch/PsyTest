@@ -10,7 +10,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v1.1.2
+- 文件版本：v1.2.0
 - 最後更新：2026-10-16
 - 專案狀態：全階段完成（Phase 1 至 Phase 7），進入維護期。詳細進度見 `HANDOVER.md`。
 
@@ -81,7 +81,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 | 五感層 | `src/perception/` | Ollama embeddinggemma-2（免授權首選） | 文字嵌入與音訊、視覺特徵分析；ST 與 GGUF 為備援 |
 | 快思層 | `src/fast_think/` | 官方 laya 套件（multilingual） | 對話節奏控制、情緒路由、危機評估；GGUF 僅備援 |
 | 慢想層 | `src/slow_think/` | Gemma 4 Uncensored（Ollama） | 虛擬個案扮演、人格管理、導演指令 |
-| 聲音層 | `src/voice/` | Kokoro（sherpa-onnx）、ChatTTS、pyttsx3 | 情感語音合成，Orpheus 預設停用 |
+| 聲音層 | `src/voice/` | ChatTTS（情感首選）、Kokoro、pyttsx3 | 情感語音合成，舞台指示不過濾念出，Orpheus 預設停用 |
 | 數據管線 | `src/pipeline/` | 無（整合層） | 單場生成、批量排程、JSONL 輸出 |
 | 後端 | `src/backend/` | 無 | Metal、CUDA、ROCm、CPU 自動偵測 |
 | 督導報告 | `src/report/` | 無（確定性規則） | AI 督導分析與 Markdown 報告 |
@@ -336,7 +336,7 @@ data/output/
 
 ### Q8：語音引擎如何選擇與安裝？
 
-選擇順序為 Kokoro、ChatTTS、pyttsx3，Orpheus 預設停用。pyttsx3 隨主依賴安裝即有基本語音。Kokoro 需另行安裝 `sherpa-onnx` 並下載模型（約 350MB，指令見 `models/README.md`）。ChatTTS 需另行安裝（授權 AGPLv3+，首次載入需由 HF 下載數 GB 模型）。各引擎缺失時會明確報錯，不會靜默失敗。
+選擇順序為 ChatTTS（情感韻律最佳，CPU 較慢）、Kokoro（輕量即時）、pyttsx3（保底），Orpheus 預設停用。pyttsx3 隨主依賴安裝即有基本語音。Kokoro 需另行安裝 `sherpa-onnx` 並下載模型（約 350MB，指令見 `models/README.md`）。ChatTTS 需另行安裝（授權 AGPLv3+，首次載入需由 HF 下載數 GB 模型）。各引擎缺失時會明確報錯，不會靜默失敗。
 
 ---
 
@@ -384,6 +384,7 @@ pytest tests/ -v
 | 2026-10-16 | v1.1.0 | 個案擴充至 9 位（含 2 共病），新增對話風格、抗拒度、記憶錨點欄位 | KiraIch |
 | 2026-10-16 | v1.1.1 | 嵌入預設改 ST 優先自動回退，管線自動接線嵌入引擎 | KiraIch |
 | 2026-10-16 | v1.1.2 | 嵌入改走 Ollama 官方 embeddinggemma-2（免授權，768 維已驗證） | KiraIch |
+| 2026-10-16 | v1.2.0 | 舞台指示不再念出，TTS 改 ChatTTS 優先，語音情緒與觸發相似度回饋決策 | KiraIch |
 
 ---
 

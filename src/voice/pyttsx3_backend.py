@@ -20,7 +20,7 @@ from typing import Dict, List
 import numpy as np
 
 from src.utils.logger import get_logger
-from src.voice.tts_engine import AudioOutput, TTSEngine, parse_inline_tags
+from src.voice.tts_engine import AudioOutput, TTSEngine, parse_inline_tags, strip_stage_directions
 
 logger = get_logger(__name__)
 
@@ -147,6 +147,9 @@ class Pyttsx3Backend(TTSEngine):
         """
         if not text or not text.strip():
             raise ValueError("輸入文本不可為空")
+        text = strip_stage_directions(text.strip())
+        if not text:
+            raise ValueError("文本經清理後為空（僅含舞台指示），無法合成")
         engine = self._new_engine()
         try:
             rate = int(director_notes.get("rate", self.rate))  # type: ignore[arg-type]

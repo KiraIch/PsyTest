@@ -72,6 +72,16 @@ def test_parse_both_tag_styles() -> None:
     assert set(tags) == {"hesitate", "breath"}
 
 
+def test_strip_stage_directions() -> None:
+    """舞台指示應移除，對白保留。"""
+    from src.voice.tts_engine import ENGINE_ORDER, strip_stage_directions
+
+    assert strip_stage_directions("（低頭）你好嗎？") == "你好嗎？"
+    assert strip_stage_directions("Hello (smiling) world") == "Hello world"
+    assert strip_stage_directions("純對白。") == "純對白。"
+    assert ENGINE_ORDER[0] == "chattts"
+
+
 def test_parse_preserves_chattts_native_tags() -> None:
     """ChatTTS 原生標籤應保留。"""
     clean, _ = parse_inline_tags("你好[laugh]，最近好嗎？")

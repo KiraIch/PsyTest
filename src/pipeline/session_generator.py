@@ -118,6 +118,45 @@ def _silence_plausible(emotion: str, intensity: float) -> bool:
         return False
 
 
+# 觸發主題相似度閾值（餘弦，啟發式）。
+_TRIGGER_SIM_THRESHOLD = 0.5
+
+
+def _cosine(vec_a: List[float], vec_b: List[float]) -> float:
+    """餘弦相似度（向量不等長或零向量時回傳 0）。"""
+    if len(vec_a) != len(vec_b) or not vec_a:
+        return 0.0
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = sum(a * a for a in vec_a) ** 0.5
+    norm_b = sum(b * b for b in vec_b) ** 0.5
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return max(-1.0, min(1.0, dot / (norm_a * norm_b)))
+
+
+def describe_vocal(features: Optional[Dict[str, Any]]) -> str:
+    """將上一輪聲學特徵轉為一句自然語言描述（啟發式分段）。
+
+    Args:
+        features: AudioFeatures 字典（可空）。
+
+    Returns:
+        描述句，無資料時回傳空字串。
+    """
+    if not features:
+        return ""
+    try:
+        energy = float(features.get("energy", 0.0))
+        pitch = float(features.get("pitch_mean", 0.0))
+        rate = float(features.get("speech_rate", 0.0))
+    except (TypeError, ValueError):
+        return ""
+    energy_word = "能量高" if energy > 0.25 else ("能量低" if energy < 0.1 else "能量適中")
+    pitch_word = "音調高" if pitch > 220 else ("音調低" if 0 < pitch < 160 else "音調適中")
+    rate_word = "語速快" if rate > 3.0 else ("語速慢" if rate < 1.5 else "語速適中")
+    return f"上一輪語音：{energy_word}、{pitch_word}、{rate_word}"
+
+
 class CounselorAgent:
     """模板式諮商師（AI 諮商師上線前替代）。"""
 
@@ -411,6 +450,8 @@ class SessionGenerator:
         error_rounds = 0
         end_reason = "max_turns"
         client_state = f"初始狀態：{persona.emotional_baseline}"
+        trigger_vecs = self._embed_triggers(persona)
+        prev_vocal: Optional[Dict[str, Any]] = None
 
         for turn_id in range(1, max_turns + 1):
             try:
@@ -425,6 +466,8 @@ class SessionGenerator:
                     model_name=model_name,
                     alliance=alliance,
                     silent_rounds=silent_rounds,
+                    prev_vocal=prev_vocal,
+                    trigger_vecs=trigger_vecs,
                 )
             except Exception as exc:  # noqa: BLE001
                 error_rounds += 1
@@ -461,11 +504,14 @@ class SessionGenerator:
                 stable_rounds = 0
             if not client["text"]:
                 silent_rounds += 1
+                prev_vocal = None
             else:
                 silent_rounds = 0
                 history.append(f"諮商師：{turn['counselor']['text']}\n個案：{client['text']}")
                 history = history[-6:]
                 client_state = f"情緒 {psych['emotion']}（{psych['emotion_intensity']}），同盟 {alliance:.2f}"
+                audio = client.get("audio", {})
+                prev_vocal = audio.get("features") if isinstance(audio.get("features"), dict) else None
             if on_turn is not None:
                 on_turn(turn)
 
@@ -481,6 +527,55 @@ class SessionGenerator:
         }
         logger.info(f"會談 {session_id} 完成：{len(turns)} 輪，結束原因：{end_reason}")
         return session
+
+    def _embed_triggers(self, persona: Persona) -> Dict[str, List[float]]:
+        """預嵌個案觸發主題向量（失敗回傳空字典，不中斷管線）。
+
+        Args:
+            persona: 個案。
+
+        Returns:
+            觸發詞到向量的映射。
+        """
+        vectors: Dict[str, List[float]] = {}
+        if not persona.triggers:
+            return vectors
+        for trigger in persona.triggers:
+            try:
+                vector = self._embed(trigger)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"觸發詞嵌入失敗（跳過）：{exc}")
+                continue
+            if vector:
+                vectors[trigger] = vector
+        return vectors
+
+    def _match_trigger(
+        self, text: str, trigger_vecs: Dict[str, List[float]]
+    ) -> str:
+        """以嵌入相似度比對是否觸及敏感主題。
+
+        Args:
+            text: 諮商師話語。
+            trigger_vecs: 觸發詞向量映射。
+
+        Returns:
+            命中主題（相似度達閾值的最高者），無則空字串。
+        """
+        if not text.strip() or not trigger_vecs:
+            return ""
+        try:
+            vec = self._embed(text.strip()[:200])
+        except Exception:  # noqa: BLE001
+            return ""
+        if not vec:
+            return ""
+        best, best_score = "", 0.0
+        for trigger, candidate in trigger_vecs.items():
+            score = _cosine(vec, candidate)
+            if score > best_score:
+                best, best_score = trigger, score
+        return best if best_score >= _TRIGGER_SIM_THRESHOLD else ""
 
     def _detect_model(self, llm: object) -> str:
         """偵測 LLM 模型名稱（失敗時回傳空字串，由 generate 兜底）。"""
@@ -504,10 +599,17 @@ class SessionGenerator:
         model_name: str,
         alliance: float,
         silent_rounds: int = 0,
+        prev_vocal: Optional[Dict[str, Any]] = None,
+        trigger_vecs: Optional[Dict[str, List[float]]] = None,
     ) -> Dict[str, Any]:
         """執行單輪對話並回傳正規化輪次。"""
         counselor_text, technique = counselor.next_utterance(turn_id)
-        context = "\n".join(history[-3:] + [f"諮商師：{counselor_text}"])
+        vocal_note = describe_vocal(prev_vocal)
+        trigger_hit = self._match_trigger(counselor_text, trigger_vecs or {})
+        notes_prefix = [vocal_note] if vocal_note else []
+        if trigger_hit:
+            notes_prefix.append(f"（觸及敏感主題：{trigger_hit}）")
+        context = "\n".join(history[-3:] + notes_prefix + [f"諮商師：{counselor_text}"])
         decision = self._decide(context, turn_id, client_state, silent_rounds)
         pacing = decision["pacing"]
         plan = self.rhythm.plan_from_pacing(pacing, decision["emotion"])
@@ -542,6 +644,7 @@ class SessionGenerator:
         prompt = (
             f"{system_prompt}\n\n【對話歷史】\n"
             + ("\n".join(history) if history else "（會談開始）")
+            + (f"\n{vocal_note}" if vocal_note else "")
             + f"\n\n諮商師：{counselor_text}\n個案："
         )
         llm = self._require_llm()
@@ -575,6 +678,9 @@ class SessionGenerator:
         scanned = keyword_crisis_scan(dialog)
         crisis = max(crisis_model, scanned.level)
         triggers = sorted(set(triggers) | set(scanned.triggers))
+        if trigger_hit and trigger_hit not in triggers:
+            triggers.append(trigger_hit)
+            triggers.sort()
 
         audio_path, audio_features, waveform = self._synthesize(
             dialog, notes.to_dict(), route.emotion, session_id, turn_id
