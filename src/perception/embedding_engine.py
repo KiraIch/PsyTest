@@ -171,7 +171,7 @@ class EmbeddingEngine:
         n_ctx: int = 2048,
         n_gpu_layers: Union[str, int, None] = "auto",
         n_batch: int = 32,
-        backend: str = "llama_cpp",
+        backend: str = "auto",
         st_model: str = ST_MODEL,
     ) -> None:
         """初始化引擎參數（實際載入請呼叫 :meth:`load`）。
@@ -181,7 +181,8 @@ class EmbeddingEngine:
             n_ctx: 上下文長度。
             n_gpu_layers: GPU offload 層數設定，預設 auto。
             n_batch: 批次大小。
-            backend: ``llama_cpp`` 或 ``st``（sentence-transformers）。
+            backend: ``auto``（ST 優先，失敗回退 GGUF）、``st``、
+                ``llama_cpp``。
             st_model: ST 後端的 HF 模型 ID。
 
         Raises:
@@ -191,8 +192,8 @@ class EmbeddingEngine:
             raise ValueError("n_ctx 必須為正整數")
         if n_batch <= 0:
             raise ValueError("n_batch 必須為正整數")
-        if backend not in {"llama_cpp", "st"}:
-            raise ValueError("backend 必須為 llama_cpp 或 st")
+        if backend not in {"auto", "llama_cpp", "st"}:
+            raise ValueError("backend 必須為 auto、llama_cpp 或 st")
         self.model_path = resolve_model_path(model_path)
         self.n_ctx = n_ctx
         self.n_gpu_layers_setting = n_gpu_layers
@@ -230,8 +231,17 @@ class EmbeddingEngine:
         """
         if self.is_loaded:
             return self
-        if self.backend == "st":
-            return self._load_st()
+        if self.backend in {"auto", "st"}:
+            try:
+                return self._load_st()
+            except ImportError as exc:
+                if self.backend == "st":
+                    raise
+                logger.warning(f"ST 後端不可用，回退 GGUF：{exc}")
+            except RuntimeError as exc:
+                if self.backend == "st":
+                    raise
+                logger.warning(f"ST 載入失敗，回退 GGUF：{str(exc)[:100]}")
         try:
             from llama_cpp import Llama
         except ImportError as exc:

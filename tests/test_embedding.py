@@ -62,16 +62,57 @@ def test_embed_text() -> None:
     assert vec.shape[0] == EMBEDDING_DIM
 
 
-def test_st_backend_missing_package() -> None:
-    """ST 後端缺套件時應給出安裝指引。"""
+def test_st_backend_missing_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ST 套件缺失時應給出安裝指引。"""
     import sys
 
     from src.perception.embedding_engine import EmbeddingEngine
 
-    if "sentence_transformers" in sys.modules:
-        pytest.skip("sentence-transformers 已安裝，跳過缺件測試")
+    monkeypatch.setitem(sys.modules, "sentence_transformers", None)
     with pytest.raises(ImportError):
         EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="st").load()
+
+
+def test_auto_falls_back_to_gguf(monkeypatch: pytest.MonkeyPatch) -> None:
+    """auto 模式 ST 缺失時應回退 GGUF（此處 GGUF 架構不支援故報錯）。"""
+    import sys
+
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", None)
+    engine = EmbeddingEngine(_require_model())
+    assert engine.backend == "auto"
+    with pytest.raises(RuntimeError, match="尚不支援"):
+        engine.load()
+
+
+def test_st_path_wiring(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ST 路徑應送查詢前綴並回傳 768 維向量（假模組，不需下載）。"""
+    import sys
+    import types
+
+    import numpy as np
+
+    from src.perception.embedding_engine import EmbeddingEngine
+
+    seen: dict = {}
+
+    class _FakeST:
+        def __init__(self, model_id: str) -> None:
+            seen["model"] = model_id
+
+        def encode_query(self, texts: list) -> np.ndarray:
+            seen["texts"] = list(texts)
+            return np.zeros((len(texts), 768), dtype=np.float32)
+
+    module = types.ModuleType("sentence_transformers")
+    module.SentenceTransformer = _FakeST  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "sentence_transformers", module)
+    engine = EmbeddingEngine("models/embeddinggemma2-q8.gguf", backend="st").load()
+    assert engine.active_backend == "st"
+    vec = engine.embed_text("測試")
+    assert vec.shape[0] == 768
+    assert seen["texts"][0].startswith("task: search result | query: ")
 
 
 def test_invalid_backend_rejected() -> None:

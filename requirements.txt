@@ -25,7 +25,7 @@ laya>=0.4  # 官方決策套件（快思層首選，Apache-2.0）
 
 
 # 以下為選用嵌入替代方案（未捆綁）：
-# pip install sentence-transformers  # ST 嵌入後端（需另行接受 HF 授權，見 models/README.md）
+# pip install sentence-transformers  # ST 嵌入首選後端（模型需另行接受 HF 授權，見 models/README.md）
 
 
 # 以下為選用 TTS 引擎，依需求自行安裝（未捆綁，授權見 NOTICE）：

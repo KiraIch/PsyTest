@@ -221,7 +221,19 @@ class SessionGenerator:
             tts = candidate
         except Exception as exc:  # noqa: BLE001
             logger.warning(f"TTS 不可用，跳過音訊：{exc}")
-        return cls(config, llm_client=llm, laya_engine=laya, tts_engine=tts, output_formatter=output_formatter)
+        embedding = None
+        try:
+            from src.perception.embedding_engine import EmbeddingEngine
+
+            embedding = EmbeddingEngine(
+                config.models.embedding.path,
+                n_ctx=config.models.embedding.context_length,
+                n_gpu_layers=config.models.embedding.gpu_layers,
+                n_batch=config.models.embedding.batch_size,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"嵌入引擎建立失敗，跳過向量：{exc}")
+        return cls(config, llm_client=llm, laya_engine=laya, tts_engine=tts, embedding_engine=embedding, output_formatter=output_formatter)
 
     def _require_llm(self) -> object:
         """確認 LLM 就緒，否則拋出明確例外。"""

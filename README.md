@@ -6,7 +6,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v1.1.0
+- 文件版本：v1.1.1
 - 最後更新：2026-10-16
 - 專案狀態：全階段完成（Phase 1 至 Phase 7），進入維護期。詳細進度見 `HANDOVER.md`。
 
@@ -74,7 +74,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 | 層級 | 目錄 | 關鍵模型 | 說明 |
 |---|---|---|---|
-| 五感層 | `src/perception/` | EmbeddingGemma 2（ST 替代路徑） | 文字嵌入與音訊、視覺特徵分析；GGUF 待 llama.cpp 上游支援 |
+| 五感層 | `src/perception/` | EmbeddingGemma 2（ST 首選，GGUF 備援） | 文字嵌入與音訊、視覺特徵分析；GGUF 待 llama.cpp 上游支援 |
 | 快思層 | `src/fast_think/` | 官方 laya 套件（multilingual） | 對話節奏控制、情緒路由、危機評估；GGUF 僅備援 |
 | 慢想層 | `src/slow_think/` | Gemma 4 Uncensored（Ollama） | 虛擬個案扮演、人格管理、導演指令 |
 | 聲音層 | `src/voice/` | Kokoro（sherpa-onnx）、ChatTTS、pyttsx3 | 情感語音合成，Orpheus 預設停用 |
@@ -378,6 +378,7 @@ pytest tests/ -v
 | 2026-10-16 | v1.0.2 | JSONL 改為首行 meta 加逐輪分行，強化決策延遲測試 | KiraIch |
 | 2026-10-16 | v1.0.3 | 修復裸 pytest 缺路徑、同步 pyproject 依賴、Makefile 支援指定個案 | KiraIch |
 | 2026-10-16 | v1.1.0 | 個案擴充至 9 位（含 2 共病），新增對話風格、抗拒度、記憶錨點欄位 | KiraIch |
+| 2026-10-16 | v1.1.1 | 嵌入預設改 ST 優先自動回退，管線自動接線嵌入引擎 | KiraIch |
 
 ---
 

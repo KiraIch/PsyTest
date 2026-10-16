@@ -6,7 +6,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.1.0
+- Document version: v1.1.1
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -74,7 +74,7 @@ This system generates simulated counseling data for clinical psychology educatio
 
 | Layer | Directory | Key Model | Description |
 |---|---|---|---|
-| Perception | `src/perception/` | EmbeddingGemma 2 (ST fallback) | Text embeddings and audio/visual feature analysis; GGUF pending upstream llama.cpp support |
+| Perception | `src/perception/` | EmbeddingGemma 2 (ST preferred, GGUF fallback) | Text embeddings and audio/visual feature analysis; GGUF pending upstream llama.cpp support |
 | Fast thinking | `src/fast_think/` | Official laya package (multilingual) | Dialogue rhythm control, emotion routing, crisis assessment; GGUF as fallback only |
 | Slow thinking | `src/slow_think/` | Gemma 4 Uncensored (Ollama) | Virtual client role-play, persona management, director notes |
 | Voice | `src/voice/` | Kokoro (sherpa-onnx), ChatTTS, pyttsx3 | Emotional speech synthesis; Orpheus disabled by default |
@@ -378,6 +378,7 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v1.0.2 | JSONL restructured to a meta line plus one line per turn; hardened the decision-latency test | KiraIch |
 | 2026-10-16 | v1.0.3 | Fixed bare-pytest path issue, synced pyproject dependencies, Makefile persona override | KiraIch |
 | 2026-10-16 | v1.1.0 | Expanded to 9 personas (2 comorbid); added conversational style, resistance, and memory anchor fields | KiraIch |
+| 2026-10-16 | v1.1.1 | Embeddings default to ST-first with automatic fallback; pipeline wires the embedding engine | KiraIch |
 
 ---
 
