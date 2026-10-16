@@ -2,6 +2,10 @@
 
 [繁體中文](README.md) | **English**
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](environment.yml)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](#2-system-requirements)
+
 PsyTest is a local multimodal counseling-simulation data generation system built on a "fast-thinking, slow-thinking" architecture. It automatically produces ecologically valid counseling simulation data for training and research. All model inference can run locally, minimizing the risk of sensitive data leaving the machine. This document is the project's official specification and is maintained on a regular update cycle.
 
 - License: Apache License 2.0, see the `LICENSE` file.

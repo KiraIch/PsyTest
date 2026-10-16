@@ -2,6 +2,10 @@
 
 **繁體中文** | [English](README.en.md)
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](environment.yml)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](#2-系統需求)
+
 PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用「快思慢想」架構，自動生成具備生態效度的心理諮商模擬數據。所有模型推理均可在本機完成，降低敏感資料外傳風險。本文件為專案正式說明文件，採定期更新制。
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
