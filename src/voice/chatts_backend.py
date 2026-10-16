@@ -29,10 +29,10 @@ from src.voice.tts_engine import AudioOutput, TTSEngine, parse_inline_tags, stri
 logger = get_logger(__name__)
 
 # <tag> 到 ChatTTS 原生寫法的轉換（無對應者移除）。
+# 注意：cry、sniffle 等哭泣相關不轉為笑聲標籤，避免模型用大笑詮釋哭泣。
 _ANGLE_TO_BRACKET = {
     "hesitate": "[uv_break]",
     "breath": "[uv_break]",
-    "cry": "[laugh]",
 }
 
 
@@ -44,10 +44,11 @@ class ChatTTSBackend(TTSEngine):
     def __init__(
         self,
         model_source: str = "huggingface",
-        oral: int = 2,
+        oral: int = 1,
         laugh: int = 0,
         breakthrough: int = 0,
         sample_rate: int = 24000,
+        speaker_seed: int = 42,
     ) -> None:
         """初始化後端參數（模型延至首次合成時載入）。
 
@@ -67,6 +68,7 @@ class ChatTTSBackend(TTSEngine):
         self.oral = oral
         self.laugh = laugh
         self.breakthrough = breakthrough
+        self.speaker_seed = speaker_seed
         self.sample_rate = sample_rate
         self._chat: object | None = None
         self._speaker: object | None = None
@@ -104,7 +106,7 @@ class ChatTTSBackend(TTSEngine):
                 raise RuntimeError("ChatTTS 模型載入回傳失敗")
         except Exception as exc:
             raise RuntimeError(f"ChatTTS 模型載入失敗：{exc}") from exc
-        torch.manual_seed(42)
+        torch.manual_seed(self.speaker_seed)
         try:
             self._speaker = chat.sample_random_speaker()
         except Exception as exc:
@@ -121,6 +123,35 @@ class ChatTTSBackend(TTSEngine):
             adapted = adapted.replace(f"<{angle.upper()}>", f" {bracket} ")
         adapted, _ = parse_inline_tags(adapted)
         return " ".join(adapted.split())
+
+    @staticmethod
+    def trim_silence(
+        waveform: np.ndarray, threshold: float = 0.02, pad_seconds: float = 0.3
+    ) -> np.ndarray:
+        """修剪首尾靜音（保留少量邊界，避免吞字）。
+
+        Args:
+            waveform: 單聲道波形。
+            threshold: 靜音判定閾值（平均絕對振幅）。
+            pad_seconds: 首尾保留的邊界秒數。
+
+        Returns:
+            修剪後波形（全靜音時原樣回傳）。
+        """
+        wave = np.asarray(waveform, dtype=np.float32).ravel()
+        if wave.size == 0:
+            return wave
+        frame = 480
+        if wave.size < frame:
+            return wave
+        energy = np.lib.stride_tricks.sliding_window_view(np.abs(wave), frame)[::frame].mean(axis=1)
+        voiced = np.nonzero(energy > threshold)[0]
+        if voiced.size == 0:
+            return wave
+        pad = int(pad_seconds * 24000)
+        start = max(0, int(voiced[0]) * frame - pad)
+        end = min(len(wave), int(voiced[-1] + 1) * frame + pad)
+        return wave[start:end] if end > start else wave
 
     def synthesize(self, text: str, director_notes: Dict[str, object]) -> AudioOutput:
         """合成情感語音。
@@ -160,6 +191,7 @@ class ChatTTSBackend(TTSEngine):
             infer_code = _ChatTTS.Chat.InferCodeParams(spk_emb=self._speaker)
             wavs = chat.infer([tagged], params_infer_code=infer_code)  # type: ignore[union-attr]
             waveform = np.asarray(wavs[0]).squeeze().astype(np.float32).ravel()
+            waveform = self.trim_silence(waveform)
         except Exception as exc:
             raise RuntimeError(f"ChatTTS 合成失敗：{exc}") from exc
         if waveform.size == 0:

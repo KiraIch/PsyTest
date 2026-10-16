@@ -179,3 +179,18 @@ def test_synthesize_rejects_empty() -> None:
 
     with pytest.raises(ValueError):
         KokoroBackend().synthesize("   ", {})
+
+
+def test_trim_silence() -> None:
+    """首尾靜音應被修剪並保留邊界（不需模型）。"""
+    import numpy as np
+
+    from src.voice.chatts_backend import ChatTTSBackend
+
+    wave = np.concatenate(
+        [np.zeros(24000), np.ones(24000) * 0.5, np.zeros(48000)]
+    ).astype(np.float32)
+    trimmed = ChatTTSBackend.trim_silence(wave)
+    assert len(trimmed) < len(wave)
+    assert len(trimmed) >= 24000
+    assert float(abs(trimmed).max()) > 0.1

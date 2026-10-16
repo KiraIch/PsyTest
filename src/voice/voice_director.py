@@ -144,11 +144,14 @@ class VoiceDirector:
         ]
 
         if target == "chattts":
-            laugh = 2 if any(k in ("sniffle", "sob", "cry", "laugh") for k in nonverbal) else 0
+            # laugh 僅在明確大笑時啟用；哭泣類以短停頓呈現，避免長串笑聲。
+            # break 上限 2：過高會產生數十秒的呼吸空白（實測）。
+            # oral 預設 1：過高口語化會含糊，諮商語音以清晰為先。
+            laugh = 2 if "laugh" in nonverbal else 0
             return {
-                "oral": 2,
+                "oral": 1,
                 "laugh": laugh,
-                "break": min(7, int(total_pause)),
+                "break": min(2, int(total_pause)),
                 "speed": speed,
                 "volume": volume,
             }

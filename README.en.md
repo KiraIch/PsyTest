@@ -10,7 +10,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.2.0
+- Document version: v1.2.1
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -385,6 +385,7 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v1.1.1 | Embeddings default to ST-first with automatic fallback; pipeline wires the embedding engine | KiraIch |
 | 2026-10-16 | v1.1.2 | Embeddings via official Ollama embeddinggemma-2 (license-free, 768 dims verified) | KiraIch |
 | 2026-10-16 | v1.2.0 | Stage directions no longer spoken; ChatTTS-first selection; vocal affect and trigger similarity feed decisions | KiraIch |
+| 2026-10-16 | v1.2.1 | Toned-down ChatTTS emotion params (crying no longer mapped to laughter), silence trimming, selectable speaker | KiraIch |
 
 ---
 
