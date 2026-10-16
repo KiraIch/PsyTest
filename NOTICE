@@ -15,6 +15,10 @@ Copyright 2026 KiraIch
 | embeddinggemma-2-Q8_0.gguf（別名 embeddinggemma2-q8.gguf） | 來源與授權待盤點 | 五感層嵌入模型 | 檔案不納入版本控制，授權確認後補充 |
 | fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive | Ollama 社群模型，授權待盤點 | 慢想層個案扮演 | 經 Ollama 取得，不納入版本控制 |
 | llama-cpp-python | MIT | GGUF 推理 | 見 requirements.txt |
+| pyttsx3 | 以其源碼庫為準（待確認） | 保底 TTS（系統語音） | 見 requirements.txt，Linux 需 espeak-ng |
+| sherpa-onnx | Apache-2.0 | Kokoro 輕量本地 TTS 運行時 | 選用，未捆綁；Kokoro 模型（Apache-2.0）置於 ~/.cache/psytest |
+| ChatTTS | AGPLv3+ | 情感語音合成 | 選用，未捆綁，動態調用；散佈含 ChatTTS 的衍生產品須遵守 AGPL 條款 |
+| orpheus-tts | 以其源碼庫為準（待確認） | Orpheus 雲端客戶端 | 選用，預設停用，需網路與端點配置 |
 | librosa / soundfile | ISC / BSD | 音訊分析與讀寫 | 見 requirements.txt |
 | requests / pyyaml / rich / pydantic / psutil | Apache-2.0 / MIT / BSD | API、設定、UI、驗證、監控 | 見 requirements.txt |
 

@@ -3,7 +3,7 @@
 
 project:
   name: "PsyTest"
-  version: "0.4.0"
+  version: "0.5.0"
   output_dir: "data/output"
 
 backend:

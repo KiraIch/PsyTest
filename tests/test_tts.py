@@ -14,5 +14,9 @@ def test_emotion_mapping_covers_required() -> None:
 
 
 def test_tts_synthesis() -> None:
-    """語音合成（Phase 4 實作後啟用）。"""
-    pytest.skip("TTS 引擎排定於 Phase 4 實作")
+    """保底引擎合成 smoke test（Phase 4 已實作，見 test_phase4.py）。"""
+    pytest.importorskip("pyttsx3", reason="缺少 pyttsx3")
+    from src.voice.pyttsx3_backend import Pyttsx3Backend
+
+    output = Pyttsx3Backend().synthesize("測試語音。", {})
+    assert output.duration > 0

@@ -14,3 +14,10 @@ rich>=13.0.0  # 終端 UI
 pydantic>=2.0  # 數據驗證
 pytest>=7.0  # 測試框架
 psutil>=5.9.0  # 溫度與資源監控 fallback
+pyttsx3>=2.90  # 保底 TTS（系統語音，無情感，Linux 另需 espeak-ng）
+
+
+# 以下為選用 TTS 引擎，依需求自行安裝（未捆綁，授權見 NOTICE）：
+# pip install sherpa-onnx  # Kokoro 輕量本地引擎（Apache-2.0，推薦）
+# pip install ChatTTS  # 情感語音（AGPLv3+，首次載入需由 HF 下載數 GB 模型）
+# pip install orpheus-tts  # Orpheus 雲端客戶端（需網路與端點配置，預設停用）

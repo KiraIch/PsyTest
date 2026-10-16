@@ -51,6 +51,21 @@ ollama list
 - 如需更換變體（例如改用 e2b 節省記憶體），請同步修改四份設定、
   `PINNED_MODEL` 常數與本節說明，並記錄於 `HANDOVER.md` 第 13 章。
 
+## 聲音層模型（Kokoro，存放於版本控制之外）
+
+Kokoro 模型不存放於本目錄，預設位於 `~/.cache/psytest/kokoro-multi-lang-v1_1`
+（可經 `PSYTEST_KOKORO_DIR` 覆寫）。缺檔時 `KokoroBackend` 會報出以下下載指令：
+
+```bash
+mkdir -p ~/.cache/psytest
+curl -sL -o ~/.cache/psytest/kokoro-multi-lang-v1_1.tar.bz2 \
+  https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_1.tar.bz2
+tar -xjf ~/.cache/psytest/kokoro-multi-lang-v1_1.tar.bz2 -C ~/.cache/psytest/
+```
+
+ChatTTS 模型由 `ChatTTS.Chat().load(source="huggingface")` 自動取得，
+存放於 HuggingFace 快取，無需手動放置。
+
 ## 授權注意
 
 - 使用前須確認各模型原始授權允許本專案之使用方式。
