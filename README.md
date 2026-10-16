@@ -195,7 +195,7 @@ ollama list
 
 ### 5.3 模型名稱偵測
 
-系統會自動掃描已安裝模型，模糊匹配包含 `gemma`、`uncensored`、`hauhau`、`aggressive` 任一關鍵字的模型，支援 e2b 與 e4b 變體，優先順序為 e4b 明確標籤、本專案鎖定標籤、e2b。若找不到，將回退至其他可用的 4B 以上模型。
+系統會自動掃描已安裝模型，模糊匹配包含 `gemma`、`uncensored`、`hauhau`、`aggressive` 任一關鍵字的模型，支援 e2b 與 e4b 變體。優先順序為本專案鎖定標籤、e4b 明確標籤、e2b 標籤，其次為其他含關鍵字的模型。若找不到，將回退至其他可用的 4B 以上模型。
 
 本專案已鎖定 e4b 變體（`fredrezones55/Gemma-4-Uncensored-HauhauCS-Aggressive:latest`，6.3GB），四份 `configs/*.yaml` 均已明確指定。也可在設定檔改回 `auto` 使用自動偵測，或以環境變數 `OLLAMA_MODEL` 覆寫。
 
@@ -278,9 +278,9 @@ make clean     # 清理輸出與暫存
 ```text
 data/output/
 ├── manifest.json
-├── sessions/session_001.jsonl
-├── audio/session_001_turn_01.wav
-└── annotations/session_001_annotations.json
+├── sessions/session_<12位id>.jsonl
+├── audio/session_<12位id>_turn_<輪次>.wav
+└── annotations/session_<12位id>_annotations.json
 ```
 
 `manifest.json` 記錄數據集名稱、場次、輪數、音訊總時長、個案清單、模態、嵌入維度、硬體與使用模型版本。驗證指令：`python scripts/validate_output.py --input data/output/batch_001/ --check-embeddings --check-audio`。
