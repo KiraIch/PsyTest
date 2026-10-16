@@ -43,7 +43,8 @@
 1. 規格書已定稿並記憶：五感層、快思層、慢想層、聲音層、數據管線，支援 Metal、CUDA、ROCm、CPU 四種後端，實作順序為 Phase 1 至 Phase 7。慢想層鎖定 e4b 變體。
 2. Phase 1 至 Phase 7 已全部完成：決策改用官方 laya 套件，嵌入加入 ST 替代路徑，文件定稿，版本 1.0.0。
 3. 已知限制兩項：GGUF 雙檔不相容（R-08）、ST 模型待授權接受（R-09）。管線降級路徑完整，不影響交付。
-4. 維護期首要待辦：HF 授權接受後的 ST 實測、`develop` 分支與議題標籤（見第 10 章）。
+4. 維護期首要待辦：語音預設試聽定案、HF 授權接受後的 ST 實測、`develop` 分支與議題標籤（見第 10 章）。
+5. 內務：`opencode.json` 已改本機專用，`marketing/` 已移除，交接以本文件與 README 為準。
 4. 模型權重檔（約 1.1 GB）與 Ollama 模型不納入版本控制，須另行交接。規格檔名與本機實際檔名存在別名對應，已由 `src/config.py` 自動處理。
 
 ### 1.3 需接手人優先閱讀的檔案
@@ -145,7 +146,8 @@
 ```text
 PsyTest/
 ├── README.md / HANDOVER.md / LICENSE / NOTICE / .env.example
-├── .gitignore / opencode.json / requirements.txt / pyproject.toml / Makefile
+├── .gitignore / requirements.txt / pyproject.toml / Makefile
+├── opencode.json                ← 僅本機，不進版控
 ├── models/                    ← 權重檔（不提交，見 models/README.md）
 ├── src/
 │   ├── config.py              ← Phase 1 完成
@@ -172,7 +174,7 @@ PsyTest/
 | `src/backend/detector.py` | 後端偵測唯一入口 | 修改偵測順序須同步更新測試與 README |
 | `src/backend/base.py` | 後端統一介面 | 新增抽象方法須同步實作四個後端 |
 | `configs/*.yaml` | 環境設定 | 機敏值禁止寫入，改用環境變數 |
-| `opencode.json` | 模型路由與 subagent 規範 | `gemini-super` 為 medium；subagent 限定 muse-main 高或極高 effort |
+| `opencode.json` | 模型路由與 subagent 規範（僅本機，不公開） | `gemini-super` 為 medium；subagent 限定 muse-main 高或極高 effort |
 | `.gitignore` | 排除規則 | 以 `git check-ignore -v` 驗證，修改後更新本文件第 6 章 |
 | `models/README.md` | 檔名別名對照 | 新增模型時同步更新 `MODEL_ALIASES` |
 | `LICENSE` / `NOTICE` | 授權全文與第三方聲明 | LICENSE 禁止修改；NOTICE 隨相依即時更新 |
@@ -214,7 +216,9 @@ PsyTest/
 git clone https://github.com/KiraIch/PsyTest.git
 cd PsyTest
 
-# 2. 安裝依賴
+# 2. 建立專用環境並安裝依賴
+conda env create -f environment.yml
+conda activate psytest
 pip install -r requirements.txt
 
 # 3. 偵測後端與驗證環境
@@ -326,6 +330,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | R-07 | 24GB 記憶體同時跑多模型吃緊 | OOM 中斷批量生成 | 按需載入與卸載；批量預設串行；溫度與記憶體監控 | （待指派） | 待處理 |
 | R-08 | 本機兩份 GGUF 與 llama.cpp 不相容 | GGUF 直載路徑不可用 | 決策改官方套件，嵌入改 ST 路徑；缺失時測試明確跳過 | KiraIch | 持續追蹤 |
 | R-09 | ST 嵌入模型待授權接受 | 嵌入向量功能未實測 | 已由 Ollama embeddinggemma-2 緩解（免授權，管線預設使用）；ST 保留為備援 | （待指派） | 持續追蹤 |
+| R-10 | ChatTTS 情感誇張且不穩定 | 哀嚎、含糊、重複循環（實測三種子皆不良） | 已收斂參數並備選 Kokoro 中文音色與 Meijia 待使用者試聽定案 | KiraIch | 待處理 |
 
 新增風險時請依序編號，禁止刪除已結案風險，結案時將狀態改為「已結案」並保留紀錄。
 
@@ -351,6 +356,7 @@ git check-ignore -v models/Laya-BF16.gguf
 
 ### 10.3 維護期待辦
 
+- [ ] 語音預設定案：等使用者試聽 `data/output/voice_samples/` 四候選後鎖定。
 - [ ] HF 授權接受後的 ST 嵌入實測（`backend="st"` 路徑）。
 - [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
 - [ ] llama.cpp 上游支援 gemma-embedding2 後，重新驗證 GGUF 直載。
