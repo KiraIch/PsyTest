@@ -1,4 +1,4 @@
-.PHONY: setup check generate batch test clean
+.PHONY: setup check generate batch report test clean
 
 setup:
 	pip install -r requirements.txt
@@ -12,6 +12,9 @@ generate:
 
 batch:
 	python scripts/batch_generate.py --config configs/default.yaml
+
+report:
+	python scripts/generate_report.py --input $(INPUT) --output $(OUTPUT)
 
 test:
 	pytest tests/ -v

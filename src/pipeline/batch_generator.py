@@ -42,6 +42,8 @@ class BatchGenerator:
         session_generator: Optional[object] = None,
         output_formatter: Optional[object] = None,
         session_factory: Optional[Callable[[], object]] = None,
+        memory_manager: Optional[object] = None,
+        thermal_monitor: Optional[object] = None,
     ) -> None:
         """初始化排程器。
 
@@ -50,6 +52,8 @@ class BatchGenerator:
             session_generator: 單場生成器（與 session_factory 二選一）。
             output_formatter: 輸出格式化器（可空，由生成器持有亦可）。
             session_factory: 生成器工廠（測試注入或多進程擴充用）。
+            memory_manager: 記憶體管理器（可空，提供時每場檢查壓力）。
+            thermal_monitor: 溫度監控器（可空，高溫時暫停或中止）。
 
         Raises:
             ValueError: 生成器與工廠皆未提供時。
@@ -60,6 +64,8 @@ class BatchGenerator:
         self.session_generator = session_generator
         self.session_factory = session_factory
         self.output_formatter = output_formatter
+        self.memory_manager = memory_manager
+        self.thermal_monitor = thermal_monitor
 
     def _checkpoint_path(self, output_dir: str | Path) -> Path:
         """回傳檢查點路徑（自動建目錄）。"""
@@ -87,6 +93,38 @@ class BatchGenerator:
                 json.dump({"completed": completed}, fh, ensure_ascii=False, indent=2)
         except OSError as exc:
             logger.warning(f"檢查點寫入失敗：{exc}")
+
+    def _resource_gate(self) -> None:
+        """每場開始前的資源檢查（未配置監控器時無動作）。
+
+        記憶體 critical 或溫度 stop 時拋出 RuntimeError 中止整批，
+        其餘狀態僅記錄警告並繼續。
+
+        Raises:
+            RuntimeError: 資源已達中止條件時。
+        """
+        if self.memory_manager is not None:
+            try:
+                pressure = self.memory_manager.check_pressure()  # type: ignore[union-attr]
+                if pressure == "critical":
+                    raise RuntimeError("系統記憶體達 critical，中止批量生成")
+                if pressure == "high":
+                    logger.warning("系統記憶體壓力 high，繼續生成但請留意")
+            except RuntimeError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"記憶體檢查失敗（繼續）：{exc}")
+        if self.thermal_monitor is not None:
+            try:
+                state = self.thermal_monitor.check()  # type: ignore[union-attr]
+                if state.action == "stop":
+                    raise RuntimeError(f"溫度達停止條件（{state.reason}），中止批量生成")
+                if state.action in {"pause", "reduce"}:
+                    logger.warning(f"溫度處置 {state.action}（{state.reason}），繼續生成")
+            except RuntimeError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"溫度檢查失敗（繼續）：{exc}")
 
     def _resolve_generator(self) -> object:
         """取得本輪使用的生成器。"""
@@ -139,6 +177,7 @@ class BatchGenerator:
                 if key in completed:
                     logger.info(f"跳過已完成：{key}（{done}/{total}）")
                     continue
+                self._resource_gate()
                 logger.info(f"生成中：{key}（{done}/{total}）")
                 try:
                     generator = self._resolve_generator()

@@ -1,0 +1,31 @@
+# PsyTest 督導報告
+
+- 會談 ID：$session_id
+- 個案：$persona_name（$diagnosis）
+- 場景：$scenario
+- 總輪數：$total_turns（含錯誤輪 $error_turns）
+- 最高危機等級：$max_crisis_level
+- 平均同理心：$avg_empathy
+
+## 情緒分佈
+
+$emotion_table
+
+## 危機事件
+
+$crisis_section
+
+## 技巧使用
+
+$technique_section
+
+## 同盟趨勢
+
+$alliance_section
+
+## 督導建議
+
+$suggestions_section
+
+---
+*本報告由確定性規則產出，僅供教學參考，不構成臨床判斷。*
