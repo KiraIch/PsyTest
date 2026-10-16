@@ -155,14 +155,14 @@ scripts\setup.bat
 
 模型權重檔不納入 Git 版本控制（已於 `.gitignore` 排除），需另行取得後放置於 `models/` 目錄。
 
-### 4.1 檔名對照
+### 4.1 模型檔案
 
-規格書命名與本機實際檔名存在差異，程式會自動嘗試別名（見 `src/config.py` 的 `MODEL_ALIASES`），以下兩組視為等價：
+將以下兩個權重檔放置於 `models/` 目錄（檔名須完全一致）：
 
-| 規格書名稱 | 本機實際檔名 | 用途 | 大小（約） | 狀態 |
-|---|---|---|---|---|
-| `embeddinggemma2-q8.gguf` | `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | llama.cpp 尚不支援 gemma-embedding2 架構，改用 ST 後端（需另行接受 HF 授權） |
-| `laya-421m-bf16.gguf` | `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 非官方轉檔，張量形狀不符，決策改用官方 laya 套件 |
+| 檔案名稱 | 用途 | 大小（約） | 狀態 |
+|---|---|---|---|
+| `embeddinggemma-2-Q8_0.gguf` | 五感層嵌入模型 | 296 MB | llama.cpp 尚不支援，現以 ST 後端替代（需另行接受 HF 授權） |
+| `Laya-BF16.gguf` | 快思層決策模型 | 805 MB | 僅備援，決策預設使用官方 laya 套件 |
 
 ### 4.2 放置與驗證
 
