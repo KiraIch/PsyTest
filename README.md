@@ -6,7 +6,7 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v1.0.2
+- 文件版本：v1.0.3
 - 最後更新：2026-10-16
 - 專案狀態：全階段完成（Phase 1 至 Phase 7），進入維護期。詳細進度見 `HANDOVER.md`。
 
@@ -248,10 +248,17 @@ python scripts/interactive_session.py --persona data/personas/bpd_crisis.yaml
 ```bash
 make check     # 硬體偵測與環境驗證
 make test      # 執行測試
-make generate  # 單場生成
+make generate  # 單場生成（預設 mdd_severe，可覆寫 PERSONA 與 SCENARIO）
 make batch     # 批量生成
 make report INPUT=<會談jsonl> OUTPUT=<報告md>  # 督導報告
 make clean     # 清理輸出與暫存
+```
+
+更換個案（共三位：`mdd_severe` 林靜怡、`bpd_crisis` 陳曉彤、`ptsd_combat` 張志豪）：
+
+```bash
+make generate PERSONA=data/personas/bpd_crisis.yaml
+python scripts/generate_session.py --persona data/personas/ptsd_combat.yaml --scenario data/scenarios/initial_session.yaml --output data/output/
 ```
 
 ---
@@ -369,6 +376,7 @@ pytest tests/ -v
 | 2026-10-16 | v1.0.0 | 完成 Phase 7：決策改用官方 laya 套件、嵌入加入 ST 替代路徑、文件定稿，進入維護期 | KiraIch |
 | 2026-10-16 | v1.0.1 | 修復 pyttsx3 驅動重用空音訊、加入沉默守衛規則 | KiraIch |
 | 2026-10-16 | v1.0.2 | JSONL 改為首行 meta 加逐輪分行，強化決策延遲測試 | KiraIch |
+| 2026-10-16 | v1.0.3 | 修復裸 pytest 缺路徑、同步 pyproject 依賴、Makefile 支援指定個案 | KiraIch |
 
 ---
 

@@ -6,7 +6,7 @@ PsyTest is a local multimodal counseling-simulation data generation system built
 
 - License: Apache License 2.0, see the `LICENSE` file.
 - Maintainer: KiraIch
-- Document version: v1.0.2
+- Document version: v1.0.3
 - Last updated: 2026-10-16
 - Project status: All phases complete (Phase 1 through Phase 7), now in maintenance. See `HANDOVER.md` for details.
 
@@ -248,10 +248,17 @@ python scripts/interactive_session.py --persona data/personas/bpd_crisis.yaml
 ```bash
 make check     # hardware detection and environment validation
 make test      # run tests
-make generate  # single-session generation
+make generate  # single-session generation (default mdd_severe; override PERSONA and SCENARIO)
 make batch     # batch generation
 make report INPUT=<session-jsonl> OUTPUT=<report-md>  # supervision report
 make clean     # clean outputs and temp files
+```
+
+Switching personas (three available: `mdd_severe`, `bpd_crisis`, `ptsd_combat`):
+
+```bash
+make generate PERSONA=data/personas/bpd_crisis.yaml
+python scripts/generate_session.py --persona data/personas/ptsd_combat.yaml --scenario data/scenarios/initial_session.yaml --output data/output/
 ```
 
 ---
@@ -369,6 +376,7 @@ Test map: `test_backend.py` covers hardware detection; `test_embedding.py`, `tes
 | 2026-10-16 | v1.0.0 | Completed Phase 7: official laya package for decisions, ST fallback path for embeddings, finalized docs; entering maintenance | KiraIch |
 | 2026-10-16 | v1.0.1 | Fixed pyttsx3 driver-reuse empty audio; added the silence guardrail | KiraIch |
 | 2026-10-16 | v1.0.2 | JSONL restructured to a meta line plus one line per turn; hardened the decision-latency test | KiraIch |
+| 2026-10-16 | v1.0.3 | Fixed bare-pytest path issue, synced pyproject dependencies, Makefile persona override | KiraIch |
 
 ---
 

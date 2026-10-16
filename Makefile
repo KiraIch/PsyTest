@@ -1,5 +1,9 @@
 .PHONY: setup check generate batch report test clean
 
+PERSONA ?= data/personas/mdd_severe.yaml
+SCENARIO ?= data/scenarios/initial_session.yaml
+CONFIG ?= configs/default.yaml
+
 setup:
 	pip install -r requirements.txt
 
@@ -8,10 +12,10 @@ check:
 	python scripts/validate_setup.py
 
 generate:
-	python scripts/generate_session.py --persona data/personas/mdd_severe.yaml --scenario data/scenarios/initial_session.yaml
+	python scripts/generate_session.py --persona $(PERSONA) --scenario $(SCENARIO)
 
 batch:
-	python scripts/batch_generate.py --config configs/default.yaml
+	python scripts/batch_generate.py --config $(CONFIG)
 
 report:
 	python scripts/generate_report.py --input $(INPUT) --output $(OUTPUT)
