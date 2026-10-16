@@ -56,6 +56,14 @@ def main(argv: list[str] | None = None) -> int:
             found = find_existing_model_path(rel)
             print(f"[模型] {label}: {found if found else '未找到（功能將受限）'}")
         print(f"[設定] {args.config}: {'存在' if Path(args.config).exists() else '不存在'}")
+        try:
+            from src.voice.tts_engine import list_available_engines
+
+            status = list_available_engines()
+            ready = [name for name, available in status.items() if available]
+            print(f"[TTS] 可用引擎：{ready if ready else '無（至少安裝 pyttsx3）'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[TTS] 檢查失敗：{exc}")
     except Exception as exc:  # noqa: BLE001
         print(f"[錯誤] 環境檢查失敗：{exc}")
         return 1

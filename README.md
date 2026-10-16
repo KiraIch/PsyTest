@@ -4,9 +4,9 @@ PsyTest 是一個本地端多模態心理諮商模擬數據生成系統，採用
 
 - 授權：Apache License 2.0，詳見 `LICENSE` 檔案。
 - 維護者：KiraIch
-- 文件版本：v0.5.0
+- 文件版本：v0.6.0
 - 最後更新：2026-10-16
-- 專案狀態：Phase 4 完成（聲音層），Phase 5 待啟動。詳細進度見 `HANDOVER.md`。
+- 專案狀態：Phase 5 完成（數據管線），Phase 6 待啟動。詳細進度見 `HANDOVER.md`。
 
 ---
 
@@ -210,7 +210,7 @@ python -m src.backend.detector
 python scripts/validate_setup.py
 ```
 
-### 6.2 生成第一場諮商（Phase 5 完成後）
+### 6.2 生成第一場諮商
 
 ```bash
 python scripts/generate_session.py \
@@ -220,9 +220,7 @@ python scripts/generate_session.py \
   --save-audio --verbose
 ```
 
-目前 `SessionGenerator` 排定於 Phase 5 實作，現階段該指令僅驗證參數與檔案存在。
-
-### 6.3 批量生成（Phase 5 完成後）
+### 6.3 批量生成
 
 ```bash
 python scripts/batch_generate.py \
@@ -233,7 +231,7 @@ python scripts/batch_generate.py \
   --resume
 ```
 
-### 6.4 互動測試（Phase 5 完成後）
+### 6.4 互動測試
 
 ```bash
 python scripts/interactive_session.py --persona data/personas/bpd_crisis.yaml
@@ -359,6 +357,7 @@ pytest tests/ -v
 | 2026-10-16 | v0.3.0 | 完成 Phase 2（嵌入引擎、決策引擎、Ollama 客戶端），鎖定 e4b 變體 | KiraIch |
 | 2026-10-16 | v0.4.0 | 完成 Phase 3（情緒路由、節奏控制、人格管理、導演系統），版本對齊 | KiraIch |
 | 2026-10-16 | v0.5.0 | 完成 Phase 4（Kokoro、ChatTTS、pyttsx3 三引擎，Orpheus 改 guarded），以 Kokoro 取代雲端方案 | KiraIch |
+| 2026-10-16 | v0.6.0 | 完成 Phase 5（單場生成、輸出格式化、批量排程、四支 CLI），端到端驗證通過 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2 核心引擎 | （待填） |
 
 ---

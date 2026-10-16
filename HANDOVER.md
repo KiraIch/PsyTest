@@ -2,12 +2,12 @@
 
 > 本文件為專案交接與維運之正式依據，採定期更新制。任何交接、人員異動、架構變更或發佈前，均須更新本文件並經負責人確認。
 
-- 文件版本：v0.5.0
+- 文件版本：v0.6.0
 - 最後更新：2026-10-16
 - 現任維護者：KiraIch
 - 前任維護者：（無，專案初建）
 - 接手人：（待填）
-- 專案狀態：Phase 4 完成，Phase 5 待啟動
+- 專案狀態：Phase 5 完成，Phase 6 待啟動
 - 下次預定檢視日期：2027-01-16（原則不超過三個月）
 
 ---
@@ -41,8 +41,8 @@
 ### 1.2 關鍵結論
 
 1. 規格書已定稿並記憶：五感層、快思層、慢想層、聲音層、數據管線，支援 Metal、CUDA、ROCm、CPU 四種後端，實作順序為 Phase 1 至 Phase 7。慢想層鎖定 e4b 變體。
-2. Phase 1 至 Phase 4 已完成：基礎設施、核心引擎、智能層、聲音層均已實作並通過驗證。
-3. Phase 5 至 Phase 7 為骨架狀態（介面與 docstring 完整，方法體拋出 `NotImplementedError`），接手人首要任務為 Phase 5 數據管線（見第 10 章）。
+2. Phase 1 至 Phase 5 已完成：基礎設施、核心引擎、智能層、聲音層、數據管線均已實作並通過驗證。
+3. Phase 6 至 Phase 7 為骨架狀態（介面與 docstring 完整，方法體拋出 `NotImplementedError`），接手人首要任務為 Phase 6 輔助功能（見第 10 章）。
 4. 模型權重檔（約 1.1 GB）與 Ollama 模型不納入版本控制，須另行交接。規格檔名與本機實際檔名存在別名對應，已由 `src/config.py` 自動處理。
 
 ### 1.3 需接手人優先閱讀的檔案
@@ -103,19 +103,25 @@
 - [x] Phase 4：`voice/orpheus_backend.py` 改為 guarded（雲端專用，預設停用）。
 - [x] Phase 4：`voice/voice_director.py`（四引擎參數轉換）。
 - [x] 版本對齊 0.5.0（套件、設定、文件一致）。
+- [x] Phase 5：`perception/audio_analyzer.py`（純 numpy 特徵，管線依賴回填）。
+- [x] Phase 5：`perception/visual_analyzer.py`（無頭參數映射，管線依賴回填）。
+- [x] Phase 5：`pipeline/data_collector.py`（輪次正規化與範圍檢查）。
+- [x] Phase 5：`pipeline/output_formatter.py`（JSONL、WAV、標註、manifest、嵌入量化）。
+- [x] Phase 5：`pipeline/session_generator.py`（模板諮商師、決策降級、危機中斷、錯誤恢復）。
+- [x] Phase 5：`pipeline/batch_generator.py`（斷點續傳、串行排程）。
+- [x] Phase 5：四支 CLI 完整實作（單場、批量、驗證、互動）與 `validate_setup` TTS 檢查。
+- [x] 版本對齊 0.6.0（套件、設定、文件一致）。
 
 ### 3.2 進行中
 
-- [ ] Phase 5：`pipeline/session_generator.py`（單場生成）。
-- [ ] Phase 5：`pipeline/output_formatter.py`（JSONL 與 manifest）。
-- [ ] Phase 5：`pipeline/batch_generator.py`（排程與斷點續傳）。
+- [ ] Phase 6：`utils/thermal_monitor.py`（溫度監控）。
+- [ ] Phase 6：`utils/memory_manager.py`（模型生命週期）。
+- [ ] Phase 6：`report/supervisor.py`（督導分析）。
 
 ### 3.3 尚未開始
 
-- [ ] Phase 4：tts_engine、orpheus/chattts 後端、voice_director。
-- [ ] Phase 5：session_generator、output_formatter、batch_generator。
-- [ ] Phase 6：thermal_monitor、supervisor、scripts 完整實作。
-- [ ] Phase 7：全量測試、README 定稿、Makefile 定稿。
+- [ ] Phase 7：全量測試啟用、README 定稿、Makefile 定稿。
+- [ ] 隱私影響評估與模型授權盤點。
 - [ ] 隱私影響評估與模型授權盤點。
 
 ---
@@ -169,6 +175,7 @@ PsyTest/
 | 2026-10-16 | 規格檔名與本機檔名以別名相容 | 本機已有 `Laya-BF16.gguf`，規格書用 `laya-421m-bf16.gguf` | `MODEL_ALIASES` 統一處理，禁止散佈兩套路徑寫法 |
 | 2026-10-16 | 以 Kokoro（sherpa-onnx，中英 103 音色，Apache-2.0）取代 Orpheus 雲端方案 | 實測 PyPI orpheus-tts 為雲端 WebSocket 客戶端，與本地端原則衝突；Kokoro 經調研與實測皆符合需求 | Orpheus 欄位保留為 guarded，選擇順序改為 kokoro→chattts→pyttsx3 |
 | 2026-10-16 | 慢想層鎖定 e4b 變體並明確寫入四份設定 | 本機已有 6.3GB 的 `:latest`（即 e4b 內容），明確指定可保證跨機器一致，`auto` 模式亦優先 e4b | 更換變體須同步修改設定、`PINNED_MODEL` 與文件 |
+| 2026-10-16 | Phase 5 回填音訊與視覺分析器（先前階段遺漏） | 管線標註依賴兩者，無實作則數據缺聲學與視覺欄位 | 音訊採純 numpy 實作，視覺採無頭參數映射 |
 | 2026-10-16 | Phase 2 至 Phase 7 先立骨架再填實作 | 保證結構一次到位，後續迭代不重排目錄 | 骨架方法一律拋出 `NotImplementedError` 並註明階段 |
 | 2026-10-16 | 測試缺權重或服務時自動跳過 | CI 與新成員本機不一定有模型 | 不可將跳過改為失敗，完整案例隨階段啟用 |
 
@@ -296,7 +303,7 @@ git check-ignore -v models/Laya-BF16.gguf
 |---|---|---|---|---|---|
 | R-01 | 模型檔案體積大，分發不易 | 新成員建置耗時；誤傳導致推送失敗 | 維持 `.gitignore` 排除；別名相容減少改名成本 | KiraIch | 持續追蹤 |
 | R-02 | 模型原始授權尚未完整盤點 | 散佈或商用可能侵權 | 盤點兩份 GGUF 與 Ollama 模型授權；結果記入 `NOTICE` | （待指派） | 待處理 |
-| R-03 | Phase 2 至 Phase 7 尚未實作 | 骨架方法呼叫時拋出例外 | CLI 與測試在缺件時降級為驗證或跳過；依第 10 章順序填補 | （待指派） | 待處理 |
+| R-03 | Phase 6 至 Phase 7 尚未實作 | 骨架方法呼叫時拋出例外 | CLI 與測試在缺件時降級為驗證或跳過；依第 10 章順序填補 | （待指派） | 待處理 |
 | R-04 | 心理諮商模擬涉及敏感議題 | 誤用或外流造成危害 | 禁止真實資料進 Git；危機模板設安全紅線；上線前完成法遵審查 | （待指派） | 持續追蹤 |
 | R-05 | 模擬結果不可作為臨床診斷 | 誤用可能造成危害 | 文件與未來 UI 均須載明警語；審查報告產出文案 | （待指派） | 持續追蹤 |
 | R-06 | BF16 在舊硬體或舊版 llama.cpp 可能不相容 | Laya 載入失敗 | Phase 2 實作自動轉 FP16 或提示下載 FP16 版本 | （待指派） | 待處理 |
@@ -316,11 +323,11 @@ git check-ignore -v models/Laya-BF16.gguf
 - [ ] 盤點兩份 GGUF 與 Ollama 模型授權，更新 `NOTICE` 與 `models/README.md` 雜湊值。
 - [ ] 建立 `develop` 分支與 GitHub Issues 標籤規範。
 
-### 10.2 中優先級（Phase 3、Phase 4 已完成，Phase 5）
+### 10.2 中優先級（Phase 3 至 Phase 5 已完成，Phase 6）
 
 - [x] Phase 3：emotion_router、rhythm_controller、persona_manager、director。
 - [x] Phase 4：tts_engine、kokoro/chattts/pyttsx3 後端、voice_director。
-3. [ ] Phase 5：session_generator、output_formatter、batch_generator 與 CLI 完整實作。
+- [x] Phase 5：session_generator、output_formatter、batch_generator 與 CLI 完整實作。
 4. [ ] 補充 `.env.example` 實際使用案例。
 
 ### 10.3 低優先級（Phase 6 至 Phase 7）
@@ -333,12 +340,12 @@ git check-ignore -v models/Laya-BF16.gguf
 
 ## 11. 驗收標準
 
-本次交接（v0.5.0）之驗收條件如下，接手人確認後方得簽收：
+本次交接（v0.6.0）之驗收條件如下，接手人確認後方得簽收：
 
 1. 可依第 5 章步驟完成環境建置，驗證清單全數通過。
 2. 可說明模型檔名別名機制，以及遺失時的還原管道。
 3. 可說明 TTS 引擎選擇順序，以及 Orpheus 為何預設停用。
-4. 可說明 Phase 4 完成範圍與 Phase 5 待辦。
+4. 可說明 Phase 5 完成範圍與 Phase 6 待辦。
 5. 已取得必要的儲存庫權限與模型檔案（或已約定取得時間）。
 
 ---
@@ -362,6 +369,7 @@ git check-ignore -v models/Laya-BF16.gguf
 | 2026-10-16 | v0.3.0 | 完成 Phase 2 三大引擎，鎖定 e4b 變體並寫入設定，測試改以真實 Ollama 驗證 | KiraIch |
 | 2026-10-16 | v0.4.0 | 完成 Phase 3 智能層四模組與 22 項測試，版本對齊 0.4.0 | KiraIch |
 | 2026-10-16 | v0.5.0 | 完成 Phase 4 聲音層三引擎實測，以 Kokoro 取代 Orpheus 雲端方案 | KiraIch |
+| 2026-10-16 | v0.6.0 | 完成 Phase 5 數據管線與四支 CLI，端到端驗證通過 | KiraIch |
 | YYYY-MM-DD | v0.x.x | （範例）完成 Phase 2，更新第 3、4、10 章 | （待填） |
 
 ---
